@@ -26,7 +26,7 @@ Each trigger has its own switch, on by default while its plugin is active:
 * **Elementor Pro forms**
 * **Gravity Forms**
 
-A form message carries the form title and each field's label and value. Passwords, file uploads, hidden fields, captchas and honeypots are never sent, and long values are cut.
+A form message carries the form title and each field's label and value. Passwords, file and image uploads, hidden fields, captchas and honeypots are never sent, and long values are cut.
 
 = What it never does =
 

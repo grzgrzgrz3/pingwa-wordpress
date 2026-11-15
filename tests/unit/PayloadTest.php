@@ -264,4 +264,32 @@ final class PayloadTest extends TestCase {
 		$this->assertSame( 'Hi there <3', $p['data']['fields'][0]['value'] );
 		$this->assertSame( 'Body', $p['data']['fields'][1]['value'] );
 	}
+	public function test_every_upload_field_type_is_skipped() {
+		// Gravity Forms: fileupload, post_image; WPForms: file-upload, camera; Elementor Pro:
+		// upload; Contact Form 7: file (file* when required); and any other *file* / *upload* type.
+		$types = array( 'fileupload', 'post_image', 'file-upload', 'camera', 'upload', 'file', 'file*', 'multi_file', 'image_upload', 'FileUpload', 'dropzone_upload' );
+		foreach ( $types as $type ) {
+			$this->assertTrue( Pingwa_Payload::is_skipped( array( 'label' => 'Photo', 'value' => 'https://shop.example/x.jpg', 'type' => $type ) ), $type );
+		}
+	}
+
+	public function test_choice_and_text_fields_are_not_mistaken_for_uploads() {
+		foreach ( array( 'text', 'textarea', 'image_choice', 'select', 'email', 'url', 'name', 'profile' ) as $type ) {
+			$this->assertFalse( Pingwa_Payload::is_skipped( array( 'label' => 'Pick', 'value' => 'Blue', 'type' => $type ) ), $type );
+		}
+	}
+
+	public function test_gravity_post_image_is_not_sent() {
+		$p = Pingwa_Payload::form(
+			'Submit a photo',
+			array(
+				array( 'label' => 'Name', 'value' => 'Ada', 'type' => 'name' ),
+				array( 'label' => 'Photo', 'value' => 'https://shop.example/wp-content/uploads/gravity_forms/x.jpg|:||:||:|', 'type' => 'post_image' ),
+			),
+			'gravityforms',
+			'S'
+		);
+		$this->assertSame( array( array( 'label' => 'Name', 'value' => 'Ada' ) ), $p['data']['fields'] );
+		$this->assertStringNotContainsString( 'x.jpg', wp_json_encode( $p ) );
+	}
 }

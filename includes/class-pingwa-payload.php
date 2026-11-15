@@ -49,7 +49,10 @@ final class Pingwa_Payload {
 
 	/**
 	 * Field types never sent: secrets, uploads, hidden values, spam traps, layout.
-	 * The type names of Contact Form 7, WPForms, Elementor Pro and Gravity Forms.
+	 * The type names of Contact Form 7, WPForms, Elementor Pro and Gravity Forms. Uploads:
+	 * CF7 `file`, WPForms `file-upload` and `camera`, Elementor Pro `upload`, Gravity Forms
+	 * `fileupload` and `post_image`; any other type with "upload", or a word starting with
+	 * "file", in its name is skipped too (is_skipped()).
 	 */
 	const SKIPPED_TYPES = array(
 		'password',
@@ -57,6 +60,8 @@ final class Pingwa_Payload {
 		'fileupload',
 		'file-upload',
 		'upload',
+		'post_image',
+		'camera',
 		'hidden',
 		'honeypot',
 		'captcha',
@@ -251,7 +256,7 @@ final class Pingwa_Payload {
 	 */
 	public static function is_skipped( array $field ) {
 		$type = strtolower( rtrim( self::scalar( isset( $field['type'] ) ? $field['type'] : '' ), '*' ) );
-		if ( in_array( $type, self::SKIPPED_TYPES, true ) ) {
+		if ( in_array( $type, self::SKIPPED_TYPES, true ) || 1 === preg_match( '/(?:^|[^a-z])file|upload/', $type ) ) {
 			return true;
 		}
 		$names = strtolower(

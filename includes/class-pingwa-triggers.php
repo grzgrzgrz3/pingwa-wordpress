@@ -31,10 +31,11 @@ final class Pingwa_Triggers {
 	const ANNOUNCED_STATUSES = array( 'processing', 'on-hold', 'completed' );
 
 	/**
-	 * Statuses an order leaves when it becomes a new order (unpaid, declined, or a block
-	 * checkout or wp-admin draft).
+	 * Statuses an order leaves when it becomes a new order (unpaid, declined, cancelled
+	 * and paid again, or a block checkout or wp-admin draft): the "from" statuses of
+	 * WooCommerce's admin "New order" e-mail.
 	 */
-	const UNPAID_STATUSES = array( 'pending', 'failed', 'checkout-draft', 'auto-draft', 'draft' );
+	const UNPAID_STATUSES = array( 'pending', 'failed', 'cancelled', 'checkout-draft', 'auto-draft', 'draft' );
 
 	/**
 	 * Trigger keys and their names.
@@ -112,7 +113,7 @@ final class Pingwa_Triggers {
 		add_action( 'gform_after_submission', array( __CLASS__, 'on_gravity' ), 10, 2 );
 		// An order counts when it first reaches processing, on-hold or completed, like
 		// WooCommerce's admin "New order" e-mail: created in one of them (classic or block
-		// checkout, REST API, code), or moved into one from pending, failed or a draft
+		// checkout, REST API, code), or moved into one from pending, failed, cancelled or a draft
 		// (a paid retry, a gateway's later confirmation, an order made in wp-admin).
 		// Pingwa_Sender checks the status and keeps a mark on the order: one message each.
 		add_action( 'woocommerce_checkout_order_processed', array( __CLASS__, 'on_order' ), 10, 1 );
@@ -260,8 +261,8 @@ final class Pingwa_Triggers {
 	}
 
 	/**
-	 * Whether a status change makes an order a new order: from pending, failed or a draft
-	 * into processing, on-hold or completed.
+	 * Whether a status change makes an order a new order: from pending, failed, cancelled
+	 * or a draft into processing, on-hold or completed.
 	 *
 	 * @param string $from Old status, without the wc- prefix.
 	 * @param string $to   New status, without the wc- prefix.

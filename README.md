@@ -78,7 +78,7 @@ Needs Docker with compose v2, `python3`, `openssl`, `uv` and the pingwa server r
   slow server adds up to 2 s per message to that one request.
 - An order is sent once (`shop_order` only: no subscriptions or refunds) when it first
   reaches processing, on-hold or completed: created in one of them, or moved into one
-  from pending, failed or a draft. The rule of WooCommerce's admin "New order" e-mail.
+  from pending, failed, cancelled or a draft. The rule of WooCommerce's admin "New order" e-mail.
 - No floods: an order restored from the trash is never sent; an order whose
   `date_created` is older than 24 h (imports, migrations) is never sent; one request
   sends at most 5 order messages and puts the rest into one "…and N more new orders"

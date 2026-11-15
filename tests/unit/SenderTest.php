@@ -207,7 +207,6 @@ final class SenderTest extends TestCase { // phpcs:ignore Generic.Files.OneObjec
 
 	public function test_other_moves_never_count() {
 		$cases = array(
-			array( 'cancelled', 'processing' ),
 			array( 'refunded', 'processing' ),
 			array( 'on-hold', 'processing' ),
 			array( 'processing', 'completed' ),
@@ -221,6 +220,31 @@ final class SenderTest extends TestCase { // phpcs:ignore Generic.Files.OneObjec
 			Pingwa_Triggers::on_status_changed( $id, $case[0], $case[1] );
 			$this->assertSame( array(), $this->flush(), implode( ' → ', $case ) );
 		}
+	}
+
+	public function test_a_cancelled_order_that_is_paid_again_is_announced_once() {
+		$id = 70;
+		foreach ( array( 'processing', 'on-hold', 'completed' ) as $to ) {
+			$order = $this->order( new WC_Order( ++$id, 'cancelled' ) );
+			Pingwa_Triggers::on_order( $id ); // Created cancelled: nothing.
+			$this->assertSame( array(), $this->flush(), "created cancelled, $to" );
+			$order->status = $to;
+			Pingwa_Triggers::on_status_changed( $id, 'cancelled', $to );
+			$this->assertSame( array( (string) $id ), $this->numbers( $this->flush() ), "cancelled → $to" );
+			Pingwa_Triggers::on_status_changed( $id, 'cancelled', $to );
+			$this->assertSame( array(), $this->flush(), "cancelled → $to again: one message per order" );
+		}
+	}
+
+	public function test_an_announced_order_cancelled_and_restored_is_not_announced_twice() {
+		$order = $this->order( new WC_Order( 80, 'processing' ) );
+		Pingwa_Triggers::on_order( 80 );
+		$this->assertSame( array( '80' ), $this->numbers( $this->flush() ) );
+		$order->status = 'cancelled';
+		Pingwa_Triggers::on_status_changed( 80, 'processing', 'cancelled' );
+		$order->status = 'processing';
+		Pingwa_Triggers::on_status_changed( 80, 'cancelled', 'processing' );
+		$this->assertSame( array(), $this->flush() );
 	}
 
 	public function test_an_abandoned_pending_order_gives_none() {

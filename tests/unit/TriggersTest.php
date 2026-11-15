@@ -127,7 +127,10 @@ final class TriggersTest extends TestCase {
 		$this->assertTrue( Pingwa_Triggers::is_first_paid_transition( 'checkout-draft', 'on-hold' ) );
 		$this->assertTrue( Pingwa_Triggers::is_first_paid_transition( 'auto-draft', 'processing' ) );
 		$this->assertTrue( Pingwa_Triggers::is_first_paid_transition( 'draft', 'processing' ) );
-		$this->assertFalse( Pingwa_Triggers::is_first_paid_transition( 'cancelled', 'processing' ) );
+		$this->assertTrue( Pingwa_Triggers::is_first_paid_transition( 'cancelled', 'processing' ) );
+		$this->assertTrue( Pingwa_Triggers::is_first_paid_transition( 'cancelled', 'on-hold' ) );
+		$this->assertTrue( Pingwa_Triggers::is_first_paid_transition( 'cancelled', 'completed' ) );
+		$this->assertFalse( Pingwa_Triggers::is_first_paid_transition( 'refunded', 'processing' ) );
 		$this->assertFalse( Pingwa_Triggers::is_first_paid_transition( 'on-hold', 'processing' ) );
 		$this->assertFalse( Pingwa_Triggers::is_first_paid_transition( 'trash', 'processing' ) );
 		$this->assertFalse( Pingwa_Triggers::is_first_paid_transition( 'pending', 'failed' ) );

@@ -63,7 +63,7 @@ No. pingwa messages only people who joined it from their own WhatsApp: you, and 
 
 = I changed an order's status. Why no new message? =
 
-The plugin sends one message per order, at the same moment WooCommerce sends you its own "New order" e-mail: when the order first reaches processing, on-hold or completed. A pending (unpaid) or failed order sends nothing until it is paid; later status changes and edits send nothing.
+The plugin sends one message per order, at the same moment WooCommerce sends you its own "New order" e-mail: when the order first reaches processing, on-hold or completed. A pending (unpaid), failed or cancelled order sends nothing until it is paid; later status changes and edits send nothing.
 
 = I imported 2,000 orders. Will my phone explode? =
 

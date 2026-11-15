@@ -291,6 +291,25 @@ def main():
     settle()
     ok(len(captures()) == base, "status changes and edits post nothing")
 
+    # cancelled → processing is a new order too, like WooCommerce's admin e-mail: once.
+    cancelled_id = int(wp_eval(
+        f"$o = wc_create_order(); $o->add_product( wc_get_product( {product_id} ), 1 ); $o->calculate_totals();"
+        "$o->save(); echo $o->get_id();"))
+    wp_eval(f"wc_get_order( {cancelled_id} )->update_status( 'cancelled' );")
+    settle()
+    ok(len(captures()) == base, f"order {cancelled_id} cancelled while unpaid: nothing posted")
+    wp_eval(f"wc_get_order( {cancelled_id} )->update_status( 'processing' );")
+    wait_captures(base + 1)
+    settle()
+    got = captures()
+    ok(len(got) == base + 1 and body(got[base])["number"] == str(cancelled_id) and body(got[base])["status"] == "processing",
+       f"cancelled → processing posts order {cancelled_id} once")
+    wp_eval(f"wc_get_order( {cancelled_id} )->update_status( 'cancelled' );")
+    wp_eval(f"wc_get_order( {cancelled_id} )->update_status( 'processing' );")
+    settle()
+    ok(len(captures()) == base + 1, "cancelled and restored again: no second message")
+    base += 1
+
     # Toggle: WooCommerce off → no post for a new order; CF7 still on.
     page = save(admin, "", ["cf7"])
     ok(wp("option", "get", "pingwa_hook_url") == HOOK_URL, "empty URL field keeps the saved hook URL")

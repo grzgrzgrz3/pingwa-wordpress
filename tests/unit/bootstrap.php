@@ -52,6 +52,21 @@ if ( ! function_exists( 'wp_json_encode' ) ) {
 	}
 }
 
+if ( ! function_exists( '__' ) ) {
+	/**
+	 * Stub of __(): no translation.
+	 *
+	 * @param string $text   Text.
+	 * @param string $domain Text domain.
+	 * @return string
+	 */
+	function __( $text, $domain = 'default' ) { // phpcs:ignore WordPress.WP.I18n
+		return $text;
+	}
+}
+
 require dirname( __DIR__, 2 ) . '/includes/class-pingwa-hook-url.php';
 require dirname( __DIR__, 2 ) . '/includes/class-pingwa-payload.php';
 require dirname( __DIR__, 2 ) . '/includes/class-pingwa-fields.php';
+require dirname( __DIR__, 2 ) . '/includes/class-pingwa-triggers.php';
+require dirname( __DIR__, 2 ) . '/includes/class-pingwa-settings.php';

@@ -38,16 +38,16 @@ A form message carries the form title and each field's label and value. Password
 = Getting a hook URL =
 
 1. Text **join wp** to pingwa on WhatsApp (Settings → pingwa has the button and a QR code). Your API key comes straight back, and your phone is the one that gets the messages.
-2. In the pingwa panel open Hooks → + new hook, set Sender to "Custom — any other sender", name it and click create hook. Copy the URL: it is shown once. It looks like `https://pingwa.grzgrzgrz3.ovh/h/hk_…`.
+2. In the pingwa panel open Hooks → + new hook, set Sender to "Custom — any other sender", name it and click create hook. Copy the URL: it is shown once. It looks like `https://pingwa.dev/h/hk_…`.
 3. Paste it in Settings → pingwa, save, and press **Send test**.
 
 == External services ==
 
-This plugin connects to pingwa (https://pingwa.grzgrzgrz3.ovh), the service that turns a request to your hook URL into a WhatsApp message to you.
+This plugin connects to pingwa (https://pingwa.dev), the service that turns a request to your hook URL into a WhatsApp message to you.
 
 * **What is sent, and when:** an HTTPS POST of a small JSON body to the hook URL you saved, (1) when a WooCommerce order is placed, with the order number, total, currency, status, items (name, quantity, total), the billing first and last name, the payment method title, the admin link to the order and the site name; (2) when a form in Contact Form 7, WPForms, Elementor Pro or Gravity Forms is submitted, with the form title, the site name and the submitted field labels and values (never passwords, uploads, hidden fields, captchas or honeypots); (3) when you press **Send test**, with a test text and the site name. Nothing is sent before you save a hook URL, and nothing for a trigger you switch off.
-* pingwa's terms of service: https://pingwa.grzgrzgrz3.ovh/terms
-* pingwa's privacy policy: https://pingwa.grzgrzgrz3.ovh/privacy
+* pingwa's terms of service: https://pingwa.dev/terms
+* pingwa's privacy policy: https://pingwa.dev/privacy
 
 The "Send join wp on WhatsApp" button and the QR code on the settings page are a link to https://pingwa.dev/join/wp, a pingwa page that forwards you to WhatsApp (wa.me) with "join wp" ready to send; it is followed only when you click or scan it, never by the plugin. The QR code is an image shipped with the plugin, not fetched from any service.
 
@@ -75,7 +75,7 @@ Yes. Anyone with it can send you messages, so it works like a password. The sett
 
 = What does it cost? =
 
-Every message counts against your pingwa plan's monthly quota, like any pingwa message. The plans are on https://pingwa.grzgrzgrz3.ovh.
+Every message counts against your pingwa plan's monthly quota, like any pingwa message. The plans are on https://pingwa.dev.
 
 == Screenshots ==
 

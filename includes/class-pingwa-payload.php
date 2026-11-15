@@ -79,6 +79,12 @@ final class Pingwa_Payload {
 	);
 
 	/**
+	 * Field types whose value is HTML (rich text editors): their tags are stripped. Any
+	 * other value is plain text as the visitor typed it, so `<50k` or `<3` stays.
+	 */
+	const HTML_TYPES = array( 'richtext', 'post_content', 'post_excerpt' );
+
+	/**
 	 * The body for a new WooCommerce order.
 	 *
 	 * @param array  $order Order facts: number, total, currency, status, first_name,
@@ -196,7 +202,7 @@ final class Pingwa_Payload {
 			if ( ! is_array( $field ) || self::is_skipped( $field ) ) {
 				continue;
 			}
-			$value = self::clip( self::value( isset( $field['value'] ) ? $field['value'] : '' ), self::MAX_VALUE );
+			$value = self::clip( self::value( isset( $field['value'] ) ? $field['value'] : '', self::is_html( $field ) ), self::MAX_VALUE );
 			if ( '' === $value ) {
 				continue;
 			}
@@ -256,18 +262,30 @@ final class Pingwa_Payload {
 	}
 
 	/**
+	 * Whether a field's value is HTML.
+	 *
+	 * @param array $field Field.
+	 * @return bool
+	 */
+	private static function is_html( array $field ) {
+		$type = isset( $field['type'] ) && is_scalar( $field['type'] ) ? strtolower( (string) $field['type'] ) : '';
+		return in_array( $type, self::HTML_TYPES, true );
+	}
+
+	/**
 	 * A field value as text: arrays flattened (scalars joined with ", "), booleans yes/no.
 	 *
 	 * @param mixed $value Value.
+	 * @param bool  $html  Whether the value is HTML (tags stripped) or plain text (kept).
 	 * @return string
 	 */
-	private static function value( $value ) {
+	private static function value( $value, $html ) {
 		if ( is_array( $value ) ) {
 			$flat = array();
 			array_walk_recursive(
 				$value,
-				function ( $v ) use ( &$flat ) {
-					$t = self::value( $v );
+				function ( $v ) use ( &$flat, $html ) {
+					$t = self::value( $v, $html );
 					if ( '' !== $t ) {
 						$flat[] = $t;
 					}
@@ -278,17 +296,20 @@ final class Pingwa_Payload {
 		if ( is_bool( $value ) ) {
 			return $value ? 'yes' : 'no';
 		}
-		return self::scalar( $value );
+		return self::scalar( $value, $html );
 	}
 
 	/**
-	 * A scalar as plain text: tags stripped, entities decoded, control characters (but
-	 * newlines) removed, CRLF made LF, trimmed. Anything else is "".
+	 * A scalar as plain text: tags stripped (HTML only; a bare `<` or `>` is kept),
+	 * entities decoded, control characters (but newlines) removed, CRLF made LF, trimmed.
+	 * Anything else is "".
 	 *
 	 * @param mixed $value Value.
+	 * @param bool  $html  Whether $value is HTML. Titles, labels, item and site names are;
+	 *                     a form value only for a rich text field.
 	 * @return string
 	 */
-	private static function scalar( $value ) {
+	private static function scalar( $value, $html = true ) {
 		if ( is_bool( $value ) ) {
 			return $value ? 'yes' : 'no';
 		}
@@ -296,7 +317,9 @@ final class Pingwa_Payload {
 			return '';
 		}
 		$text = str_replace( array( "\r\n", "\r", "\t" ), array( "\n", "\n", ' ' ), (string) $value );
-		$text = wp_strip_all_tags( $text );
+		if ( $html ) {
+			$text = wp_strip_all_tags( wp_pre_kses_less_than( $text ) );
+		}
 		$text = html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 		$text = preg_replace( '/[\x00-\x09\x0B-\x1F\x7F]/u', '', $text );
 		if ( null === $text ) { // Invalid UTF-8: keep the bytes that form valid characters.

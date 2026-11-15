@@ -144,4 +144,10 @@ final class FieldsTest extends TestCase {
 		$this->assertSame( array(), Pingwa_Fields::from_elementor( array( 'x', 1 ) ) );
 		$this->assertSame( array(), Pingwa_Fields::from_gravity( array(), array() ) );
 	}
+	public function test_gravity_rich_text_textarea_is_rich_text() {
+		$field                    = new Fake_GF_Field( 1, 'textarea', 'Bio' );
+		$field->useRichTextEditor = true; // phpcs:ignore WordPress.NamingConventions.ValidVariableName
+		$out                      = Pingwa_Fields::from_gravity( array( 'fields' => array( $field ) ), array( '1' => '<p>Hi</p>' ) );
+		$this->assertSame( 'richtext', $out[0]['type'] );
+	}
 }

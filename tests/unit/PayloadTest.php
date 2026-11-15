@@ -121,7 +121,7 @@ final class PayloadTest extends TestCase {
 				array( 'label' => 'Your name', 'value' => 'Ada' ),
 				array( 'label' => 'Email', 'value' => 'ada@example.com' ),
 				array( 'label' => 'Topics', 'value' => 'Sales, Support' ),
-				array( 'label' => 'Message', 'value' => "Hello\nthere" ),
+				array( 'label' => 'Message', 'value' => "<b>Hello</b>\nthere" ),
 			),
 			$p['data']['fields']
 		);
@@ -135,7 +135,7 @@ final class PayloadTest extends TestCase {
 			. "Your name: Ada\n"
 			. "Email: ada@example.com\n"
 			. "Topics: Sales, Support\n"
-			. "Message: Hello\nthere",
+			. "Message: <b>Hello</b>\nthere",
 			$p['text']
 		);
 	}
@@ -222,5 +222,46 @@ final class PayloadTest extends TestCase {
 		$p = Pingwa_Payload::test( '<b>Shop</b> &amp; Co' );
 		$this->assertStringContainsString( 'Shop & Co', $p['text'] );
 		$this->assertSame( 'Shop & Co', $p['site'] );
+	}
+	public function test_a_bare_less_or_greater_than_in_a_value_stays_as_typed() {
+		$p = Pingwa_Payload::form(
+			'Quote',
+			array(
+				array( 'label' => 'Message', 'value' => 'Budget <50k EUR, need it in >2 weeks', 'type' => 'textarea', 'name' => 'msg' ),
+				array( 'label' => 'Qty', 'value' => '<3', 'type' => 'text', 'name' => 'q' ),
+				array( 'label' => 'Size', 'value' => 'a<b & c>d', 'type' => 'select', 'name' => 's' ),
+			),
+			'contact-form-7',
+			'Shop'
+		);
+		$this->assertSame(
+			array(
+				array( 'label' => 'Message', 'value' => 'Budget <50k EUR, need it in >2 weeks' ),
+				array( 'label' => 'Qty', 'value' => '<3' ),
+				array( 'label' => 'Size', 'value' => 'a<b & c>d' ),
+			),
+			$p['data']['fields']
+		);
+		$this->assertStringContainsString( "Message: Budget <50k EUR, need it in >2 weeks\nQty: <3\n", $p['text'] );
+	}
+
+	public function test_a_bare_less_than_in_titles_and_labels_survives_tag_stripping() {
+		$p = Pingwa_Payload::form( '<3 Quote <b>form</b>', array( array( 'label' => 'Kids <3', 'value' => 'x', 'type' => 'text' ) ), 'wpforms', 'Shop' );
+		$this->assertSame( '<3 Quote form', $p['data']['formName'] );
+		$this->assertSame( 'Kids <3', $p['data']['fields'][0]['label'] );
+	}
+
+	public function test_rich_text_values_are_still_stripped_of_tags() {
+		$p = Pingwa_Payload::form(
+			'F',
+			array(
+				array( 'label' => 'Bio', 'value' => '<p>Hi <strong>there</strong></p><script>x()</script> <3', 'type' => 'richtext' ),
+				array( 'label' => 'Post', 'value' => '<em>Body</em>', 'type' => 'post_content' ),
+			),
+			'wpforms',
+			'S'
+		);
+		$this->assertSame( 'Hi there <3', $p['data']['fields'][0]['value'] );
+		$this->assertSame( 'Body', $p['data']['fields'][1]['value'] );
 	}
 }

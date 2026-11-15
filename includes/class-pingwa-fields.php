@@ -104,6 +104,9 @@ final class Pingwa_Fields {
 				continue;
 			}
 			$type = method_exists( $field, 'get_input_type' ) ? (string) $field->get_input_type() : self::prop( $field, 'type' );
+			if ( 'textarea' === $type && ! empty( $field->useRichTextEditor ) ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+				$type = 'richtext';
+			}
 			if ( in_array( self::prop( $field, 'visibility' ), array( 'hidden', 'administrative' ), true ) ) {
 				$type = 'hidden';
 			}

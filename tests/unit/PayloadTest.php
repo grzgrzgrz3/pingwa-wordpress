@@ -292,4 +292,43 @@ final class PayloadTest extends TestCase {
 		$this->assertSame( array( array( 'label' => 'Name', 'value' => 'Ada' ) ), $p['data']['fields'] );
 		$this->assertStringNotContainsString( 'x.jpg', wp_json_encode( $p ) );
 	}
+	public function test_encode_keeps_unicode_and_slashes_unescaped() {
+		$this->assertSame( '{"a":"😀 https://x.example/p","b":"ż"}', Pingwa_Payload::encode( array( 'a' => '😀 https://x.example/p', 'b' => 'ż' ) ) );
+	}
+
+	public function test_the_critic_emoji_form_fits_without_cutting() {
+		$f = array();
+		for ( $i = 0; $i < 25; $i++ ) {
+			$f[] = array( 'label' => str_repeat( '😀', 80 ), 'value' => str_repeat( '😀', 300 ), 'type' => 'text', 'name' => "f$i" );
+		}
+		$p    = Pingwa_Payload::form( str_repeat( '😀', 80 ), $f, 'wpforms', str_repeat( '😀', 80 ) );
+		$json = Pingwa_Payload::encode( $p );
+		$this->assertLessThanOrEqual( Pingwa_Payload::MAX_BODY, strlen( $json ) );
+		$this->assertSame( $p, json_decode( $json, true ), 'nothing had to be cut' );
+	}
+
+	public function test_an_oversized_body_has_its_longest_values_cut_until_it_fits() {
+		$p    = array(
+			'text'   => 'New response',
+			'data'   => array(
+				'formName' => 'F',
+				'fields'   => array(
+					array( 'label' => 'a', 'value' => str_repeat( '😀', 10000 ) ),
+					array( 'label' => 'b', 'value' => str_repeat( 'ż', 20000 ) ),
+					array( 'label' => 'c', 'value' => 'short' ),
+				),
+			),
+			'source' => 'wpforms',
+		);
+		$json = Pingwa_Payload::encode( $p );
+		$this->assertLessThanOrEqual( Pingwa_Payload::MAX_BODY, strlen( $json ) );
+		$this->assertGreaterThan( Pingwa_Payload::MAX_BODY - 2000, strlen( $json ), 'cut no more than needed' );
+		$out = json_decode( $json, true );
+		$this->assertNotNull( $out );
+		$this->assertStringEndsWith( '…', $out['data']['fields'][0]['value'] );
+		$this->assertStringEndsWith( '…', $out['data']['fields'][1]['value'] );
+		$this->assertSame( 'short', $out['data']['fields'][2]['value'] );
+		$this->assertSame( 'New response', $out['text'] );
+		$this->assertSame( 'F', $out['data']['formName'] );
+	}
 }

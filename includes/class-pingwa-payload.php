@@ -84,6 +84,11 @@ final class Pingwa_Payload {
 	);
 
 	/**
+	 * Largest JSON body posted (bytes; the server takes up to 64 KB).
+	 */
+	const MAX_BODY = 60000;
+
+	/**
 	 * Field types whose value is HTML (rich text editors): their tags are stripped. Any
 	 * other value is plain text as the visitor typed it, so `<50k` or `<3` stays.
 	 */
@@ -246,6 +251,80 @@ final class Pingwa_Payload {
 			'site'   => $site,
 			'source' => 'test',
 		);
+	}
+
+	/**
+	 * A body as the JSON posted: UTF-8 and slashes unescaped, at most MAX_BODY bytes. A
+	 * larger body has its longest values cut (ending in "…") until it fits.
+	 *
+	 * @param array $payload Body.
+	 * @return string|false JSON, or false when it cannot be encoded.
+	 */
+	public static function encode( array $payload ) {
+		$flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+		$json  = wp_json_encode( $payload, $flags );
+		for ( $i = 0; false !== $json && strlen( $json ) > self::MAX_BODY && $i < 200; $i++ ) {
+			$payload = self::cut_longest( $payload, strlen( $json ) - self::MAX_BODY );
+			if ( null === $payload ) {
+				return false;
+			}
+			$json = wp_json_encode( $payload, $flags );
+		}
+		return false !== $json && strlen( $json ) <= self::MAX_BODY ? $json : false;
+	}
+
+	/**
+	 * $data with its longest string (the first, on a tie) cut by about $excess bytes, or
+	 * null when nothing is left to cut.
+	 *
+	 * @param array $data   Body.
+	 * @param int   $excess Bytes over the limit.
+	 * @return array|null
+	 */
+	private static function cut_longest( array $data, $excess ) {
+		$max = 0;
+		array_walk_recursive(
+			$data,
+			function ( $v ) use ( &$max ) {
+				if ( is_string( $v ) && strlen( $v ) > $max ) {
+					$max = strlen( $v );
+				}
+			}
+		);
+		if ( $max <= 8 ) {
+			return null;
+		}
+		$done = false;
+		$walk = function ( $node ) use ( &$walk, &$done, $max, $excess ) {
+			if ( is_array( $node ) ) {
+				foreach ( $node as $key => $value ) {
+					$node[ $key ] = $walk( $value );
+				}
+				return $node;
+			}
+			if ( ! $done && is_string( $node ) && strlen( $node ) === $max ) {
+				$done = true;
+				return self::shorten( $node, $excess );
+			}
+			return $node;
+		};
+		return $walk( $data );
+	}
+
+	/**
+	 * Text shorter by at least $excess characters (at most by half), ending in "…".
+	 *
+	 * @param string $text   Text.
+	 * @param int    $excess Characters to drop.
+	 * @return string
+	 */
+	private static function shorten( $text, $excess ) {
+		if ( '…' === mb_substr( $text, -1, 1, 'UTF-8' ) ) {
+			$text = mb_substr( $text, 0, -1, 'UTF-8' );
+		}
+		$chars = mb_strlen( $text, 'UTF-8' );
+		$keep  = max( intdiv( $chars, 2 ), $chars - max( 1, (int) $excess ) );
+		return rtrim( mb_substr( $text, 0, $keep, 'UTF-8' ) ) . '…';
 	}
 
 	/**

@@ -325,4 +325,11 @@ final class SenderTest extends TestCase { // phpcs:ignore Generic.Files.OneObjec
 		$this->assertStringContainsString( 'PHP-FPM', $readme );
 		$this->assertStringContainsString( '2 seconds', $readme );
 	}
+	public function test_the_posted_body_is_unescaped_json() {
+		Pingwa_Sender::queue( Pingwa_Payload::form( 'Café 😀', array( array( 'label' => 'Site', 'value' => 'https://a.example/b', 'type' => 'url' ) ), 'wpforms', 'Shop' ) );
+		Pingwa_Sender::flush();
+		$body = $GLOBALS['pingwa_wp']['posts'][0]['args']['body'];
+		$this->assertStringContainsString( 'Café 😀', $body );
+		$this->assertStringContainsString( 'https://a.example/b', $body );
+	}
 }

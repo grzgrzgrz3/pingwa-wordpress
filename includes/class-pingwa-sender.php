@@ -246,8 +246,13 @@ final class Pingwa_Sender {
 	 * @return array|WP_Error|null The response, an error, or null without a hook URL.
 	 */
 	public static function post( array $payload, $blocking ) {
-		$url = Pingwa_Settings::hook_url();
+		$url  = Pingwa_Settings::hook_url();
+		$json = Pingwa_Payload::encode( $payload );
 		if ( '' === $url ) {
+			return null;
+		}
+		if ( false === $json ) {
+			self::log( 'body could not be encoded' );
 			return null;
 		}
 		$response = wp_safe_remote_post(
@@ -258,7 +263,7 @@ final class Pingwa_Sender {
 				'redirection' => 0,
 				'user-agent'  => 'pingwa-wp/' . PINGWA_VERSION,
 				'headers'     => array( 'Content-Type' => 'application/json; charset=utf-8' ),
-				'body'        => wp_json_encode( $payload ),
+				'body'        => $json,
 				'data_format' => 'body',
 			)
 		);

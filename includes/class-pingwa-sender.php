@@ -50,6 +50,19 @@ final class Pingwa_Sender {
 	private static $orders = array();
 
 	/**
+	 * Order ids never sent in this request (restored from the trash), id => true.
+	 *
+	 * @var array
+	 */
+	private static $skipped = array();
+
+	/**
+	 * Order messages one request sends at most (filter `pingwa_max_order_messages`); the
+	 * rest go into one "…and N more new orders" message.
+	 */
+	const MAX_ORDER_MESSAGES = 5;
+
+	/**
 	 * Whether the shutdown callback is hooked.
 	 *
 	 * @var bool
@@ -96,6 +109,15 @@ final class Pingwa_Sender {
 	}
 
 	/**
+	 * Never send this order in this request (it was restored from the trash).
+	 *
+	 * @param int $order_id Order id.
+	 */
+	public static function skip_order( $order_id ) {
+		self::$skipped[ (int) $order_id ] = true;
+	}
+
+	/**
 	 * Hook flush() as the last shutdown callback.
 	 */
 	private static function hook() {
@@ -111,19 +133,26 @@ final class Pingwa_Sender {
 	public static function flush() {
 		self::guard(
 			function () {
-				$bodies       = self::$queue;
-				$orders       = array_keys( self::$orders );
-				self::$queue  = array();
-				self::$orders = array();
-				foreach ( $orders as $order_id ) {
+				$bodies        = self::$queue;
+				$orders        = array_diff_key( self::$orders, self::$skipped );
+				self::$queue   = array();
+				self::$orders  = array();
+				self::$skipped = array();
+				$max_age       = (int) apply_filters( 'pingwa_order_max_age', DAY_IN_SECONDS );
+				$order_bodies  = array();
+				foreach ( array_keys( $orders ) as $order_id ) {
 					self::guard(
-						function () use ( $order_id, &$bodies ) {
-							$body = self::claim_order( $order_id );
+						function () use ( $order_id, $max_age, &$order_bodies ) {
+							$body = self::claim_order( $order_id, $max_age );
 							if ( null !== $body ) {
-								$bodies[] = $body;
+								$order_bodies[] = $body;
 							}
 						}
 					);
+				}
+				if ( $order_bodies ) {
+					$max    = max( 0, (int) apply_filters( 'pingwa_max_order_messages', self::MAX_ORDER_MESSAGES ) );
+					$bodies = array_merge( $bodies, self::cap_orders( $order_bodies, $max ) );
 				}
 				if ( ! $bodies ) {
 					return;
@@ -141,15 +170,39 @@ final class Pingwa_Sender {
 	}
 
 	/**
+	 * At most $max order bodies; the rest become one "…and N more new orders" body.
+	 *
+	 * @param array $bodies Order bodies.
+	 * @param int   $max    Most sent one by one.
+	 * @return array
+	 */
+	private static function cap_orders( array $bodies, $max ) {
+		if ( count( $bodies ) <= $max ) {
+			return $bodies;
+		}
+		$more   = count( $bodies ) - $max;
+		$bodies = array_slice( $bodies, 0, $max );
+		self::guard(
+			function () use ( $more, &$bodies ) {
+				$bodies[] = Pingwa_Payload::more_orders( $more, Pingwa_Triggers::site(), Pingwa_Triggers::orders_admin_url() );
+			}
+		);
+		return $bodies;
+	}
+
+	/**
 	 * The body of a new order, once: a shop_order in processing, on-hold or completed that
 	 * was never sent. Marks the order when its body is queued, so later requests (status
 	 * changes, edits, a second checkout hook) send nothing. Null when there is nothing to
 	 * send (a pending or failed order stays unmarked and counts once it is paid).
 	 *
+	 * Orders created more than $max_age seconds ago (imports, migrations) are never sent.
+	 *
 	 * @param int $order_id Order id.
+	 * @param int $max_age  Seconds.
 	 * @return array|null
 	 */
-	private static function claim_order( $order_id ) {
+	private static function claim_order( $order_id, $max_age ) {
 		if ( ! function_exists( 'wc_get_order' ) ) {
 			return null;
 		}
@@ -159,6 +212,10 @@ final class Pingwa_Sender {
 			return null;
 		}
 		if ( ! Pingwa_Triggers::is_announced_status( $order->get_status() ) || $order->get_meta( self::ORDER_META ) ) {
+			return null;
+		}
+		$created = $order->get_date_created();
+		if ( is_object( $created ) && method_exists( $created, 'getTimestamp' ) && $created->getTimestamp() < time() - $max_age ) {
 			return null;
 		}
 		$order->update_meta_data( self::ORDER_META, gmdate( 'c' ) );

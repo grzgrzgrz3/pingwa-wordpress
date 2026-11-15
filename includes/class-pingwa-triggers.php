@@ -119,6 +119,9 @@ final class Pingwa_Triggers {
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( __CLASS__, 'on_order' ), 10, 1 );
 		add_action( 'woocommerce_new_order', array( __CLASS__, 'on_order' ), 10, 1 );
 		add_action( 'woocommerce_order_status_changed', array( __CLASS__, 'on_status_changed' ), 10, 3 );
+		// Restoring an order from the trash is never a new order (HPOS, then posts storage).
+		add_action( 'woocommerce_untrash_order', array( __CLASS__, 'on_untrash' ), 10, 1 );
+		add_action( 'untrash_post', array( __CLASS__, 'on_untrash' ), 10, 1 );
 	}
 
 	/**
@@ -247,6 +250,16 @@ final class Pingwa_Triggers {
 	}
 
 	/**
+	 * WooCommerce woocommerce_untrash_order, WordPress untrash_post: an order restored
+	 * from the trash sends nothing in this request, whatever its status moves through.
+	 *
+	 * @param int $id Order (or post) id.
+	 */
+	public static function on_untrash( $id ) {
+		Pingwa_Sender::skip_order( absint( $id ) );
+	}
+
+	/**
 	 * Whether a status change makes an order a new order: from pending, failed or a draft
 	 * into processing, on-hold or completed.
 	 *
@@ -294,6 +307,19 @@ final class Pingwa_Triggers {
 			'edit_url'             => (string) $order->get_edit_order_url(),
 			'items'                => $items,
 		);
+	}
+
+	/**
+	 * The orders list in wp-admin (order tables or posts storage).
+	 *
+	 * @return string
+	 */
+	public static function orders_admin_url() {
+		if ( class_exists( '\\Automattic\\WooCommerce\\Utilities\\OrderUtil' )
+			&& \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled() ) {
+			return admin_url( 'admin.php?page=wc-orders' );
+		}
+		return admin_url( 'edit.php?post_type=shop_order' );
 	}
 
 	/**

@@ -75,3 +75,9 @@ Needs Docker with compose v2, `python3`, `openssl`, `uv` and the pingwa server r
 - An order is sent once (`shop_order` only: no subscriptions or refunds) when it first
   reaches processing, on-hold or completed: created in one of them, or moved into one
   from pending, failed or a draft. The rule of WooCommerce's admin "New order" e-mail.
+- No floods: an order restored from the trash is never sent; an order whose
+  `date_created` is older than 24 h (imports, migrations) is never sent; one request
+  sends at most 5 order messages and puts the rest into one "…and N more new orders"
+  message with the wp-admin orders link. Filters (no settings):
+  `pingwa_order_max_age` (seconds, default `DAY_IN_SECONDS`) and
+  `pingwa_max_order_messages` (default 5).

@@ -147,6 +147,32 @@ final class Pingwa_Payload {
 	}
 
 	/**
+	 * The body standing in for the orders of one request past the cap: "…and N more new
+	 * orders" with the orders list in wp-admin. `number` carries the same words for a hook
+	 * with the woocommerce_order preset.
+	 *
+	 * @param int    $count Orders not sent one by one.
+	 * @param string $site  Site name.
+	 * @param string $url   wp-admin orders list.
+	 * @return array
+	 */
+	public static function more_orders( $count, $site, $url ) {
+		$count = max( 1, (int) $count );
+		$site  = self::site( $site );
+		$url   = self::url( $url );
+		$words = sprintf( '…and %d more new %s', $count, 1 === $count ? 'order' : 'orders' );
+		$text  = $words . ' on ' . $site . ( '' === $url ? '' : "\n" . $url );
+		return array(
+			'text'        => self::cut_text( $text ),
+			'number'      => sprintf( '…and %d more', $count ),
+			'more_orders' => $count,
+			'edit_url'    => $url,
+			'site'        => $site,
+			'source'      => 'woocommerce',
+		);
+	}
+
+	/**
 	 * The body for a form submission.
 	 *
 	 * @param string $title  Form title.

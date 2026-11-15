@@ -65,6 +65,10 @@ No. pingwa messages only people who joined it from their own WhatsApp: you, and 
 
 The plugin sends one message per order, at the same moment WooCommerce sends you its own "New order" e-mail: when the order first reaches processing, on-hold or completed. A pending (unpaid) or failed order sends nothing until it is paid; later status changes and edits send nothing.
 
+= I imported 2,000 orders. Will my phone explode? =
+
+No. Orders created more than 24 hours ago are never sent, an order restored from the trash is never sent, and one request sends at most 5 order messages: the rest arrive as one "…and N more new orders" message with a link to your orders. Developers can change both limits with the `pingwa_order_max_age` (seconds) and `pingwa_max_order_messages` filters.
+
 = Is the hook URL a secret? =
 
 Yes. Anyone with it can send you messages, so it works like a password. The settings page shows only its last four characters once saved. If it leaks, revoke the hook in the pingwa panel and paste a new one.

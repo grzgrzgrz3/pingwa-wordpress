@@ -229,4 +229,83 @@ final class SenderTest extends TestCase { // phpcs:ignore Generic.Files.OneObjec
 		$this->assertSame( array(), $this->flush() );
 		$this->assertSame( '', $order->get_meta( Pingwa_Sender::ORDER_META ) );
 	}
+	public function test_untrash_never_announces() {
+		$order = $this->order( new WC_Order( 50, 'processing' ) );
+		Pingwa_Triggers::on_untrash( 50 ); // HPOS woocommerce_untrash_order / CPT untrash_post.
+		Pingwa_Triggers::on_status_changed( 50, 'pending', 'processing' );
+		Pingwa_Triggers::on_order( 50 );
+		$this->assertSame( array(), $this->flush() );
+		$this->assertSame( '', $order->get_meta( Pingwa_Sender::ORDER_META ) );
+	}
+
+	public function test_untrash_hooks_are_registered() {
+		Pingwa_Triggers::register();
+		$tags = array_column( $GLOBALS['pingwa_wp']['actions'], 0 );
+		$this->assertContains( 'woocommerce_untrash_order', $tags );
+		$this->assertContains( 'untrash_post', $tags );
+	}
+
+	public function test_orders_older_than_a_day_are_never_announced() {
+		$this->order( new WC_Order( 60, 'processing', new DateTimeImmutable( '@' . ( time() - DAY_IN_SECONDS - 60 ) ) ) );
+		$this->order( new WC_Order( 61, 'processing', new DateTimeImmutable( '@' . ( time() - DAY_IN_SECONDS + 60 ) ) ) );
+		Pingwa_Triggers::on_order( 60 );
+		Pingwa_Triggers::on_order( 61 );
+		$this->assertSame( array( '61' ), $this->numbers( $this->flush() ) );
+		$this->assertSame( '', $GLOBALS['pingwa_wp']['orders'][60]->get_meta( Pingwa_Sender::ORDER_META ) );
+	}
+
+	public function test_the_age_limit_is_filterable() {
+		$GLOBALS['pingwa_wp']['filters']['pingwa_order_max_age'] = function ( $seconds ) {
+			return 3 * $seconds;
+		};
+		$this->order( new WC_Order( 62, 'processing', new DateTimeImmutable( '@' . ( time() - 2 * DAY_IN_SECONDS ) ) ) );
+		Pingwa_Triggers::on_order( 62 );
+		$this->assertSame( array( '62' ), $this->numbers( $this->flush() ) );
+	}
+
+	public function test_a_rest_batch_of_100_orders_gives_6_posts() {
+		for ( $id = 101; $id <= 200; $id++ ) {
+			$this->order( new WC_Order( $id, 'processing' ) );
+			Pingwa_Triggers::on_order( $id );
+		}
+		$bodies = $this->flush();
+		$this->assertCount( 6, $bodies );
+		$this->assertSame( array( '101', '102', '103', '104', '105' ), array_slice( $this->numbers( $bodies ), 0, 5 ) );
+		$summary = $bodies[5];
+		$this->assertStringStartsWith( '…and 95 more new orders', $summary['text'] );
+		$this->assertStringContainsString( 'https://shop.example/wp-admin/', $summary['text'] );
+		$this->assertSame( 'woocommerce', $summary['source'] );
+		$this->assertSame( 95, $summary['more_orders'] );
+		foreach ( range( 101, 200 ) as $id ) {
+			$this->assertNotSame( '', $GLOBALS['pingwa_wp']['orders'][ $id ]->get_meta( Pingwa_Sender::ORDER_META ), "order $id marked" );
+		}
+	}
+
+	public function test_the_order_message_cap_is_filterable() {
+		$GLOBALS['pingwa_wp']['filters']['pingwa_max_order_messages'] = function () {
+			return 2;
+		};
+		for ( $id = 1; $id <= 3; $id++ ) {
+			$this->order( new WC_Order( $id, 'processing' ) );
+			Pingwa_Triggers::on_order( $id );
+		}
+		$bodies = $this->flush();
+		$this->assertCount( 3, $bodies );
+		$this->assertStringStartsWith( '…and 1 more new order on Shop', $bodies[2]['text'] );
+	}
+
+	public function test_five_orders_send_no_summary_and_forms_do_not_count() {
+		for ( $id = 1; $id <= 5; $id++ ) {
+			$this->order( new WC_Order( $id, 'processing' ) );
+			Pingwa_Triggers::on_order( $id );
+		}
+		for ( $i = 0; $i < 3; $i++ ) {
+			Pingwa_Sender::queue( Pingwa_Payload::form( 'Contact', array(), 'wpforms', 'Shop' ) );
+		}
+		$bodies = $this->flush();
+		$this->assertCount( 8, $bodies );
+		foreach ( $bodies as $b ) {
+			$this->assertArrayNotHasKey( 'more_orders', $b );
+		}
+	}
 }

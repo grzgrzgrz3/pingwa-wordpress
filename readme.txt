@@ -30,7 +30,7 @@ A form message carries the form title and each field's label and value. Password
 
 = What it never does =
 
-* It never sends the customer's e-mail address, phone number or address.
+* It never sends a WooCommerce customer's e-mail address, phone number or address. (A form message does carry what the visitor typed into the form's fields, including an e-mail field if your form has one, so you can answer them.)
 * It never breaks a checkout or a form. The message is sent at the very end of the request: where the server supports it (PHP-FPM, LiteSpeed) that is after the visitor already has the page, so they never wait. On other servers (for example Apache with mod_php) the visitor's page waits for the send: usually a fraction of a second, at most 2 seconds per message when pingwa is slow or unreachable. Any error is swallowed (and logged only while WP_DEBUG is on).
 * It never stores anything but the hook URL. No API key, no account login.
 * It never messages your customers. pingwa messages only people who joined it from their own WhatsApp: you, and your teammates when your account has a team.

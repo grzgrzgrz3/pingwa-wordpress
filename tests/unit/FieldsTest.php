@@ -151,4 +151,17 @@ final class FieldsTest extends TestCase {
 		$out                      = Pingwa_Fields::from_gravity( array( 'fields' => array( $field ) ), array( '1' => '<p>Hi</p>' ) );
 		$this->assertSame( 'richtext', $out[0]['type'] );
 	}
+
+	public function test_gravity_forms_credit_card_is_never_sent() {
+		$form   = array(
+			'fields' => array(
+				new Fake_GF_Field( 1, 'text', 'Name' ),
+				new Fake_GF_Field( 2, 'creditcard', 'Card', '4242 4242 4242 4242 / 123' ),
+			),
+		);
+		$fields = Pingwa_Fields::from_gravity( $form, array( '1' => 'Ada', '2.1' => '4242 4242 4242 4242', '2.3' => '123' ) );
+		$p      = Pingwa_Payload::form( 'Checkout', $fields, 'gravityforms', 'S' );
+		$this->assertSame( array( array( 'label' => 'Name', 'value' => 'Ada' ) ), $p['data']['fields'] );
+		$this->assertStringNotContainsString( '4242', wp_json_encode( $p ) );
+	}
 }

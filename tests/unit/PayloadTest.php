@@ -331,4 +331,44 @@ final class PayloadTest extends TestCase {
 		$this->assertSame( 'New response', $out['text'] );
 		$this->assertSame( 'F', $out['data']['formName'] );
 	}
+
+	/**
+	 * A card number as each plugin hands it over, never in the body.
+	 */
+	private function assert_card_never_sent( array $fields, $source ) {
+		$p    = Pingwa_Payload::form( 'Checkout', array_merge( array( array( 'label' => 'Name', 'value' => 'Ada', 'type' => 'text', 'name' => 'n' ) ), $fields ), $source, 'S' );
+		$json = wp_json_encode( $p );
+		$this->assertStringNotContainsString( '4242', $json );
+		$this->assertStringNotContainsString( '123', $json );
+		$this->assertSame( array( array( 'label' => 'Name', 'value' => 'Ada' ) ), $p['data']['fields'] );
+	}
+
+	public function test_wpforms_payment_fields_are_never_sent() {
+		$types  = array( 'credit-card', 'stripe-credit-card', 'square', 'authorize_net', 'paypal-commerce', 'payment-single', 'payment-multiple', 'payment-checkbox', 'payment-select', 'payment-total', 'payment-coupon', 'internal-information' );
+		$raw    = array();
+		foreach ( $types as $i => $type ) {
+			$raw[ $i + 2 ] = array( 'name' => 'Card', 'value' => '4242 4242 4242 4242', 'id' => $i + 2, 'type' => $type );
+		}
+		$this->assert_card_never_sent( Pingwa_Fields::from_wpforms( $raw ), 'wpforms' );
+	}
+
+	public function test_elementor_and_cf7_card_like_fields_are_never_sent() {
+		$el = Pingwa_Fields::from_elementor( array( 'cc' => array( 'id' => 'cc', 'type' => 'credit_card', 'title' => 'Card', 'value' => '4242 4242 4242 4242' ) ) );
+		$this->assert_card_never_sent( $el, 'elementor' );
+		$cf7 = Pingwa_Fields::from_cf7(
+			array( (object) array( 'basetype' => 'stripe', 'name' => 'pay' ), (object) array( 'basetype' => 'text', 'name' => 'card-number' ) ),
+			array( 'pay' => '4242 4242 4242 4242', 'card-number' => '4242 4242 4242 4242' )
+		);
+		$this->assertTrue( Pingwa_Payload::is_skipped( $cf7[0] ), 'stripe tag' );
+		$this->assert_card_never_sent( array_slice( $cf7, 0, 1 ), 'contact-form-7' );
+	}
+
+	public function test_any_type_with_card_or_payment_in_it_is_skipped() {
+		foreach ( array( 'creditcard', 'credit-card', 'CreditCard', 'card', 'debit_card_number', 'payment', 'payment-xyz', 'my_payment_field', 'stripe', 'square', 'authorize_net', 'paypal-commerce', 'internal-information' ) as $type ) {
+			$this->assertTrue( Pingwa_Payload::is_skipped( array( 'label' => 'X', 'value' => '4242', 'type' => $type ) ), $type );
+		}
+		foreach ( array( 'text', 'email', 'name', 'address', 'number', 'select', 'product' ) as $type ) {
+			$this->assertFalse( Pingwa_Payload::is_skipped( array( 'label' => 'X', 'value' => 'v', 'type' => $type ) ), $type );
+		}
+	}
 }

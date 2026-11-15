@@ -53,6 +53,12 @@ final class Pingwa_Payload {
 	 * CF7 `file`, WPForms `file-upload` and `camera`, Elementor Pro `upload`, Gravity Forms
 	 * `fileupload` and `post_image`; any other type with "upload", or a word starting with
 	 * "file", in its name is skipped too (is_skipped()).
+	 *
+	 * Payment data never leaves the site: Gravity Forms `creditcard`; WPForms
+	 * `credit-card`, `stripe-credit-card`, `square`, `authorize_net`, `paypal-commerce`,
+	 * the `payment-*` types and `internal-information`; the Contact Form 7 Stripe tag
+	 * `stripe`. Elementor Pro has no payment field. Any other type with "card" or
+	 * "payment" in its name is skipped too (is_skipped()).
 	 */
 	const SKIPPED_TYPES = array(
 		'password',
@@ -81,6 +87,14 @@ final class Pingwa_Payload {
 		'section',
 		'step',
 		'content',
+		'creditcard',
+		'credit-card',
+		'stripe-credit-card',
+		'square',
+		'authorize_net',
+		'paypal-commerce',
+		'internal-information',
+		'stripe',
 	);
 
 	/**
@@ -335,7 +349,7 @@ final class Pingwa_Payload {
 	 */
 	public static function is_skipped( array $field ) {
 		$type = strtolower( rtrim( self::scalar( isset( $field['type'] ) ? $field['type'] : '' ), '*' ) );
-		if ( in_array( $type, self::SKIPPED_TYPES, true ) || 1 === preg_match( '/(?:^|[^a-z])file|upload/', $type ) ) {
+		if ( in_array( $type, self::SKIPPED_TYPES, true ) || 1 === preg_match( '/(?:^|[^a-z])file|upload|card|payment/', $type ) ) {
 			return true;
 		}
 		$names = strtolower(

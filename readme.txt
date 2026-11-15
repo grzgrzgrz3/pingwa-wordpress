@@ -49,7 +49,7 @@ This plugin connects to pingwa (https://pingwa.grzgrzgrz3.ovh), the service that
 * pingwa's terms of service: https://pingwa.grzgrzgrz3.ovh/terms
 * pingwa's privacy policy: https://pingwa.grzgrzgrz3.ovh/privacy
 
-The "Send join wp on WhatsApp" button and the QR code on the settings page are a link to WhatsApp (wa.me); they are followed only when you click or scan them. The QR code is an image shipped with the plugin, not fetched from any service.
+The "Send join wp on WhatsApp" button and the QR code on the settings page are a link to https://pingwa.dev/join/wp, a pingwa page that forwards you to WhatsApp (wa.me) with "join wp" ready to send; it is followed only when you click or scan it, never by the plugin. The QR code is an image shipped with the plugin, not fetched from any service.
 
 == Frequently Asked Questions ==
 

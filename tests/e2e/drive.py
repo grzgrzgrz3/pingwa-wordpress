@@ -175,7 +175,7 @@ def main():
     admin.form("/wp-login.php", {"log": "admin", "pwd": "admin", "wp-submit": "Log In", "testcookie": "1",
                                  "redirect_to": "/wp-admin/"})
     page = admin_page(admin)
-    ok("join wp" in page and "https://wa.me/48797882513?text=join%20wp" in page,
+    ok("join wp" in page and "https://pingwa.dev/join/wp" in page and "wa.me" not in page,
        "settings page shows the join wp link")
     ok("assets/join-wp-qr.svg" in page, "settings page shows the shipped QR image")
     status, _, svg = admin.request("GET", "/wp-content/plugins/pingwa/assets/join-wp-qr.svg")

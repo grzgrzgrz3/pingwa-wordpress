@@ -125,14 +125,16 @@ def main():
 
     check({"test", "contact-form-7", "woocommerce"} <= seen, "test, form and order bodies all seen")
 
-    php = (repo / "pingwa.php").read_text()
-    link = re.search(r"define\( 'PINGWA_JOIN_URL', '([^']+)' \);", php).group(1)
-    number = "+" + re.search(r"wa\.me/(\d+)\?", link).group(1)
-    check(link == join.join_link("wp", number), f"join link is the server's join_link('wp'): {link}")
-    check(join.parse_join(urllib_unquote(link.split("text=", 1)[1])).tag == "wp", "the server reads it as join tag 'wp'")
+    php = (repo / "includes/class-pingwa-settings.php").read_text()
+    link = re.search(r"const JOIN_URL = '([^']+)';", php).group(1)
+    check(re.fullmatch(r"https://pingwa\.dev/join/wp", link) is not None, f"join link is the stable /join/wp redirect: {link}")
+    check("wa.me" not in link and not re.search(r"\d{8,}", link), "no WhatsApp number in the join link")
+    # The server answers that path with a redirect to join_link("wp", <today's number>).
+    check(join.parse_join(urllib_unquote(join.join_link("wp", "+15550000000").split("text=", 1)[1])).tag == "wp",
+          "the server reads 'join wp' as join tag 'wp'")
     buf = io.BytesIO()
     segno.make_qr(link, error="M").save(buf, kind="svg", scale=6, border=2, dark="#000", light="#fff",
-                                        xmldecl=False, title="join wp")
+                                        xmldecl=False, title="join wp", desc=link)
     check(buf.getvalue().decode() == (repo / "assets/join-wp-qr.svg").read_text(),
           "assets/join-wp-qr.svg is segno's QR of the join link")
 

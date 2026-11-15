@@ -25,8 +25,6 @@ define( 'PINGWA_VERSION', '0.1.0' );
 define( 'PINGWA_FILE', __FILE__ );
 // The pingwa server the setup steps and links point to.
 define( 'PINGWA_SERVER_URL', 'https://pingwa.grzgrzgrz3.ovh' );
-// WhatsApp link prefilled with "join wp" (signup tag `wp`). assets/join-wp-qr.svg is its QR.
-define( 'PINGWA_JOIN_URL', 'https://wa.me/48797882513?text=join%20wp' );
 
 require_once __DIR__ . '/includes/class-pingwa-hook-url.php';
 require_once __DIR__ . '/includes/class-pingwa-payload.php';

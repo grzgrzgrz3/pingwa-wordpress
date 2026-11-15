@@ -34,6 +34,39 @@ final class Pingwa_Settings {
 	const CAPABILITY = 'manage_options';
 
 	/**
+	 * The stable public join link: the pingwa server answers it with a redirect to WhatsApp
+	 * with "join wp" prefilled on today's join number, so the number is never in the plugin.
+	 * assets/join-wp-qr.svg is the QR of exactly this URL (bin/make-qr.sh).
+	 */
+	const JOIN_URL = 'https://pingwa.dev/join/wp';
+
+	/**
+	 * The join link the settings page shows: JOIN_URL, which a site can replace with the
+	 * `pingwa_join_url` filter (a self-hosted pingwa server, for example). A value that is
+	 * not an https:// URL with a host is ignored.
+	 *
+	 * @return string
+	 */
+	public static function join_url() {
+		$url = apply_filters( 'pingwa_join_url', self::JOIN_URL );
+		if ( is_string( $url ) && 'https' === wp_parse_url( $url, PHP_URL_SCHEME ) && wp_parse_url( $url, PHP_URL_HOST ) && ! preg_match( '/\s/', $url ) ) {
+			return $url;
+		}
+		return self::JOIN_URL;
+	}
+
+	/**
+	 * What the QR code on the page encodes, or "" when there is none to show: the shipped
+	 * image is the QR of JOIN_URL only, so it is hidden when the link is filtered (a QR that
+	 * disagrees with the button would be worse than none).
+	 *
+	 * @return string
+	 */
+	public static function join_qr_payload() {
+		return self::join_url() === self::JOIN_URL ? self::JOIN_URL : '';
+	}
+
+	/**
 	 * The saved hook URL, or "" when none (or an invalid one) is saved.
 	 *
 	 * @return string
@@ -272,7 +305,7 @@ final class Pingwa_Settings {
 							'<strong>join wp</strong>'
 						);
 						?>
-						<br><a class="button button-primary" style="margin-top:6px" href="<?php echo esc_url( PINGWA_JOIN_URL ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Send “join wp” on WhatsApp', 'pingwa' ); ?></a>
+						<br><a class="button button-primary" style="margin-top:6px" href="<?php echo esc_url( self::join_url() ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Send “join wp” on WhatsApp', 'pingwa' ); ?></a>
 					</li>
 					<li>
 						<?php
@@ -293,10 +326,12 @@ final class Pingwa_Settings {
 					</li>
 					<li><?php esc_html_e( 'Paste it below, save, and press Send test.', 'pingwa' ); ?></li>
 				</ol>
-				<figure style="margin:0;text-align:center">
-					<img src="<?php echo esc_url( plugins_url( 'assets/join-wp-qr.svg', PINGWA_FILE ) ); ?>" width="198" height="198" alt="<?php esc_attr_e( 'QR code: opens WhatsApp with “join wp” ready to send to pingwa', 'pingwa' ); ?>">
-					<figcaption><?php esc_html_e( 'Scan with your phone', 'pingwa' ); ?></figcaption>
-				</figure>
+				<?php if ( '' !== self::join_qr_payload() ) : ?>
+					<figure style="margin:0;text-align:center">
+						<img src="<?php echo esc_url( plugins_url( 'assets/join-wp-qr.svg', PINGWA_FILE ) ); ?>" width="174" height="174" alt="<?php esc_attr_e( 'QR code: opens WhatsApp with “join wp” ready to send to pingwa', 'pingwa' ); ?>">
+						<figcaption><?php esc_html_e( 'Scan with your phone', 'pingwa' ); ?></figcaption>
+					</figure>
+				<?php endif; ?>
 			</div>
 			<p class="description" style="max-width:60em">
 				<?php

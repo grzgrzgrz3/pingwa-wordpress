@@ -259,17 +259,17 @@ def main():
     ok(len(captures()) == base, "WooCommerce toggle off: new order posts nothing")
     page = save(admin, "", ["cf7", "woocommerce"])
 
-    # A slow server never holds a checkout past the 3 s cap (ruling 5).
+    # A slow server never holds a checkout past the 2 s cap (ruling 5; mod_php, so the visitor waits).
     subprocess.run(["docker", "compose", "up", "-d", "--force-recreate", "receiver"], cwd=HERE, check=True,
                    env={**os.environ, "RECEIVER_DELAY_S": "8"}, capture_output=True)
     time.sleep(2)
     status, res, secs = store_checkout(product_id)
     ok(status == 200 and res.get("order_id"), f"checkout with an 8 s slow server still succeeds ({secs:.2f}s)")
-    ok(secs < 5.0, f"checkout waited at most the 3 s cap plus overhead ({secs:.2f}s)")
+    ok(secs < 4.0, f"checkout waited at most the 2 s cap plus overhead ({secs:.2f}s)")
     got = wait_captures(base + 1)
     ok(len(got) == base + 1 and body(got[base])["number"] == str(res["order_id"]), "slow server still received the order")
     status, res, secs = cf7_submit(Browser(), form_id)
-    ok(status == 200 and res.get("status") in ("mail_sent", "mail_failed") and secs < 5.0,
+    ok(status == 200 and res.get("status") in ("mail_sent", "mail_failed") and secs < 4.0,
        f"CF7 submit with a slow server succeeds within the cap ({secs:.2f}s)")
     got = wait_captures(base + 2)
     ok(len(got) == base + 2, "slow server still received the form")

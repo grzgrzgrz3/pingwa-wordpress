@@ -4,8 +4,9 @@
  *
  * Triggers queue bodies during the request; at the very end of it (the last `shutdown`
  * callback) the queue is posted: the response is handed to the visitor first where the
- * server allows it (PHP-FPM, LiteSpeed), each post is non-blocking with a 3 second
- * timeout, and every error is caught. Errors are logged with error_log() only while
+ * server allows it (PHP-FPM, LiteSpeed), each post is non-blocking with a 2 second
+ * timeout (elsewhere, e.g. mod_php, the visitor can wait up to that per post), and every
+ * error is caught. Errors are logged with error_log() only while
  * WP_DEBUG is on, and never with the hook URL in them.
  *
  * @package pingwa
@@ -28,7 +29,7 @@ final class Pingwa_Sender {
 	/**
 	 * Seconds a post from a site request may take at most.
 	 */
-	const TIMEOUT = 3;
+	const TIMEOUT = 2;
 
 	/**
 	 * Seconds the settings page's test waits for the server's answer.

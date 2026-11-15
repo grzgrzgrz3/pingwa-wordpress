@@ -308,4 +308,21 @@ final class SenderTest extends TestCase { // phpcs:ignore Generic.Files.OneObjec
 			$this->assertArrayNotHasKey( 'more_orders', $b );
 		}
 	}
+	public function test_a_site_request_posts_with_a_2_second_timeout() {
+		$this->order( new WC_Order( 1, 'processing' ) );
+		Pingwa_Triggers::on_order( 1 );
+		Pingwa_Sender::flush();
+		$this->assertCount( 1, $GLOBALS['pingwa_wp']['posts'] );
+		$args = $GLOBALS['pingwa_wp']['posts'][0]['args'];
+		$this->assertSame( 2, $args['timeout'] );
+		$this->assertFalse( $args['blocking'] );
+		$this->assertSame( self::HOOK, $GLOBALS['pingwa_wp']['posts'][0]['url'] );
+	}
+
+	public function test_readme_says_when_a_post_can_slow_a_request() {
+		$readme = file_get_contents( dirname( __DIR__, 2 ) . '/readme.txt' );
+		$this->assertStringNotContainsString( 'never slows down', $readme );
+		$this->assertStringContainsString( 'PHP-FPM', $readme );
+		$this->assertStringContainsString( '2 seconds', $readme );
+	}
 }

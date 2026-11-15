@@ -90,22 +90,21 @@ final class Pingwa_Settings {
 	}
 
 	/**
-	 * Stop unless the current user may manage options and the nonce of $action is valid.
-	 *
-	 * @param string $action Nonce action.
+	 * Stop unless the current user may manage options. Each handler then checks its own
+	 * nonce with check_admin_referer().
 	 */
-	private static function authorize( $action ) {
+	private static function require_capability() {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
 			wp_die( esc_html__( 'You are not allowed to change these settings.', 'pingwa' ), '', array( 'response' => 403 ) );
 		}
-		check_admin_referer( $action );
 	}
 
 	/**
 	 * Save the hook URL (when one is pasted) and the toggles.
 	 */
 	public static function handle_save() {
-		self::authorize( 'pingwa_save' );
+		self::require_capability();
+		check_admin_referer( 'pingwa_save' );
 
 		$raw = isset( $_POST['pingwa_hook_url'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['pingwa_hook_url'] ) ) ) : '';
 		$bad = false;
@@ -139,7 +138,8 @@ final class Pingwa_Settings {
 	 * Forget the hook URL.
 	 */
 	public static function handle_forget() {
-		self::authorize( 'pingwa_forget' );
+		self::require_capability();
+		check_admin_referer( 'pingwa_forget' );
 		delete_option( self::OPTION_URL );
 		self::notice( 'success', __( 'The hook URL is removed from this site. Nothing is sent until you paste a new one. To stop the URL itself, revoke the hook in the pingwa panel.', 'pingwa' ) );
 		self::back();
@@ -149,7 +149,8 @@ final class Pingwa_Settings {
 	 * Post a test body and report the server's answer.
 	 */
 	public static function handle_test() {
-		self::authorize( 'pingwa_test' );
+		self::require_capability();
+		check_admin_referer( 'pingwa_test' );
 		if ( '' === self::hook_url() ) {
 			self::notice( 'error', __( 'Save a hook URL first.', 'pingwa' ) );
 			self::back();

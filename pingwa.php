@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       pingwa – WhatsApp alerts for forms and orders
+ * Plugin Name:       pingwa – order and form alerts
  * Plugin URI:        https://pingwa.grzgrzgrz3.ovh/woocommerce
  * Description:       Sends Contact Form 7, WPForms, Elementor Pro and Gravity Forms submissions and new WooCommerce orders to your WhatsApp through a pingwa hook URL.
  * Version:           0.1.0
@@ -12,7 +12,7 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       pingwa
  * WC requires at least: 7.1
- * WC tested up to:   10.3
+ * WC tested up to:   11.3
  *
  * @package pingwa
  */

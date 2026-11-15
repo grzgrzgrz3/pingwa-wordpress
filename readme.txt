@@ -1,4 +1,4 @@
-=== pingwa – WhatsApp alerts for forms and orders ===
+=== pingwa – order and form alerts ===
 Contributors: pingwa
 Tags: whatsapp, woocommerce, contact form 7, notifications, forms
 Requires at least: 6.2

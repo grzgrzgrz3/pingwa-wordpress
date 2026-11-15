@@ -1,0 +1,4 @@
+/vendor/
+/build/
+/.phpunit.result.cache
+/tests/e2e/.run/

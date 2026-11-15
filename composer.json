@@ -1,0 +1,21 @@
+{
+    "name": "pingwa/pingwa-wp",
+    "description": "WordPress plugin: form submissions and WooCommerce orders to WhatsApp through a pingwa hook URL.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.6"
+    },
+    "config": {
+        "platform": {
+            "php": "7.4.33"
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}

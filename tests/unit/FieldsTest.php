@@ -17,6 +17,7 @@ final class Fake_GF_Field {
 	public $label;
 	public $adminLabel = ''; // phpcs:ignore WordPress.NamingConventions.ValidVariableName
 	public $visibility = 'visible';
+	public $useRichTextEditor = false; // phpcs:ignore WordPress.NamingConventions.ValidVariableName
 	private $export;
 
 	public function __construct( $id, $type, $label, $export = null, $visibility = 'visible' ) {

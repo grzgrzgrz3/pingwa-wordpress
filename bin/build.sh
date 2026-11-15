@@ -3,8 +3,10 @@
 # build/pingwa.zip (what goes to WordPress.org). Only runtime files, no tests or tooling.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-rm -rf build
+# Empty build/pingwa in place (the E2E stack bind-mounts it), then copy.
 mkdir -p build/pingwa
+find build/pingwa -mindepth 1 -delete
+rm -f build/pingwa.zip
 cp -r pingwa.php uninstall.php readme.txt includes assets build/pingwa/
 ( cd build && python3 -c '
 import os, zipfile

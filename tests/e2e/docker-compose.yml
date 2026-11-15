@@ -1,0 +1,85 @@
+# E2E stack. Every container, network and volume is named pingwa-wp-*.
+# Run through tests/e2e/run.sh (it builds the plugin, makes the TLS certs, tears down).
+name: pingwa-wp
+
+services:
+  db:
+    image: mariadb:11.4
+    container_name: pingwa-wp-db
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: wordpress
+    volumes:
+      - pingwa-wp-db:/var/lib/mysql
+    networks: [pingwa-wp-net]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      retries: 60
+
+  wordpress:
+    image: wordpress:php8.3-apache
+    container_name: pingwa-wp-wordpress
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DEBUG: "1"
+    ports:
+      - "127.0.0.1:${PINGWA_WP_PORT:-18471}:80"
+    volumes:
+      - pingwa-wp-html:/var/www/html
+      - ../../build/pingwa:/var/www/html/wp-content/plugins/pingwa:ro
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      - ./.run/certs/ca.pem:/certs/ca.pem:ro
+    networks: [pingwa-wp-net]
+
+  cli:
+    image: wordpress:cli-php8.3
+    container_name: pingwa-wp-cli
+    user: "33:33"
+    command: ["sleep", "infinity"]
+    depends_on: [wordpress]
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+      HOME: /tmp
+    volumes:
+      - pingwa-wp-html:/var/www/html
+      - ../../build/pingwa:/var/www/html/wp-content/plugins/pingwa:ro
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      - ./.run/certs/ca.pem:/certs/ca.pem:ro
+    networks: [pingwa-wp-net]
+
+  # Stands in for the pingwa server: HTTPS on hooks.pingwa-e2e.test, answers like
+  # /h/<token>, writes every request to .run/captures/.
+  receiver:
+    image: python:3.12-alpine
+    container_name: pingwa-wp-receiver
+    command: ["python", "-u", "/e2e/receiver.py"]
+    environment:
+      RECEIVER_DELAY_S: "${RECEIVER_DELAY_S:-0}"
+    volumes:
+      - ./receiver.py:/e2e/receiver.py:ro
+      - ./.run/certs:/certs:ro
+      - ./.run/captures:/captures
+    networks:
+      pingwa-wp-net:
+        aliases: [hooks.pingwa-e2e.test]
+
+networks:
+  pingwa-wp-net:
+    name: pingwa-wp-net
+
+volumes:
+  pingwa-wp-db:
+    name: pingwa-wp-db
+  pingwa-wp-html:
+    name: pingwa-wp-html

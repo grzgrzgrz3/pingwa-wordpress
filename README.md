@@ -48,10 +48,14 @@ What it does (`tests/e2e/`):
   external for `wp_safe_remote_post` and trusts its CA.
 - Installs WooCommerce (HPOS on), Contact Form 7 and Plugin Check, then `drive.py`: the
   real admin page (nonce, capability, invalid URLs refused, masked URL, Send test with
-  the HTTP status), a CF7 submit with hidden and file fields, a block checkout through the
-  Store API, an order made in code, status changes (no second message), the WooCommerce
-  toggle off, an 8 s slow server (checkout and form still return in about 2 s) and the
-  server down (nothing breaks).
+  the HTTP status), a CF7 submit with hidden and file fields and a bare `<` / `>` in its
+  values, a block checkout through the Store API, an order made in code, a wp-admin order
+  (auto-draft and pending send nothing, processing sends), a declined-then-paid retry
+  (one message, paid status), an abandoned pending order and a 2-day-old order (nothing),
+  status changes (no second message), the WooCommerce toggle off, a trash/untrash
+  (nothing), a REST API batch of 100 orders (5 messages and one "…and 95 more"), an 8 s
+  slow server (checkout and form still return in about 2 s) and the server down
+  (nothing breaks).
 - `check_bodies.py` runs in the pingwa server repo's own environment, read-only
   (`cd $PINGWA_SERVER_REPO && uv run --frozen --no-sync python …`): every captured body
   through `hooks_api.render_text` (a hook without a template) and the

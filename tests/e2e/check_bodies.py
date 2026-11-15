@@ -79,7 +79,14 @@ def main():
               f"{name}: a hook without a template sends the body's text")
         print("  --- message (no template) ---\n  " + msg.replace("\n", "\n  "))
 
-        if source == "woocommerce":
+        if source == "woocommerce" and "more_orders" in data:
+            out = preset_render("woocommerce_order", raw, ctype)
+            check(msg.startswith(f"…and {data['more_orders']} more new order") and data["edit_url"] in msg,
+                  f"{name}: the summary message names the count and links the orders")
+            check(data["number"] in out, f"{name}: woocommerce_order preset shows the summary count")
+            print("  --- message (woocommerce_order preset) ---\n  " + out.replace("\n", "\n  "))
+            check(not re.search(r"@|\+1555", rec["body"]), f"{name}: no e-mail or phone anywhere")
+        elif source == "woocommerce":
             out = preset_render("woocommerce_order", raw, ctype)
             first = data["line_items"][0]
             want = [

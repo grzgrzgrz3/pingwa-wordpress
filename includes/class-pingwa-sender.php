@@ -152,7 +152,8 @@ final class Pingwa_Sender {
 			return null;
 		}
 		$order = wc_get_order( $order_id );
-		if ( ! $order || ! is_a( $order, 'WC_Order' ) || is_a( $order, 'WC_Order_Refund' ) ) {
+		// Only a real order: not a subscription, a refund or any other order type.
+		if ( ! is_object( $order ) || ! method_exists( $order, 'get_type' ) || 'shop_order' !== $order->get_type() ) {
 			return null;
 		}
 		if ( ! Pingwa_Triggers::is_notifiable_status( $order->get_status() ) || $order->get_meta( self::ORDER_META ) ) {

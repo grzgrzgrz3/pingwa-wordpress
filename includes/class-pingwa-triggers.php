@@ -109,6 +109,8 @@ final class Pingwa_Triggers {
 		add_action( 'woocommerce_checkout_order_processed', array( __CLASS__, 'on_order' ), 10, 1 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( __CLASS__, 'on_order' ), 10, 1 );
 		add_action( 'woocommerce_new_order', array( __CLASS__, 'on_order' ), 10, 1 );
+		// An order made in wp-admin starts as an auto-draft: it counts once it leaves it.
+		add_action( 'woocommerce_order_status_changed', array( __CLASS__, 'on_status_changed' ), 10, 3 );
 	}
 
 	/**
@@ -220,6 +222,20 @@ final class Pingwa_Triggers {
 				}
 			}
 		);
+	}
+
+	/**
+	 * WooCommerce: woocommerce_order_status_changed. Only a move out of a draft status is
+	 * a new order (an order made in wp-admin); any other change sends nothing.
+	 *
+	 * @param int    $order_id Order id.
+	 * @param string $from     Old status.
+	 * @param string $to       New status.
+	 */
+	public static function on_status_changed( $order_id, $from, $to ) {
+		if ( ! self::is_notifiable_status( $from ) && self::is_notifiable_status( $to ) ) {
+			self::on_order( $order_id );
+		}
 	}
 
 	/**

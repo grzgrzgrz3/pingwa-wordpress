@@ -20,7 +20,7 @@ pingwa runs on the official WhatsApp API: no Meta setup, no templates, and your 
 
 Each trigger has its own switch, on by default while its plugin is active:
 
-* **WooCommerce new order** – one message per order: order number, total, currency, status, items, the customer's name, the payment method and a link to the order in your admin. Classic and block checkout, HPOS order tables included.
+* **WooCommerce new order** – one message per order, when it first reaches processing, on-hold or completed (like WooCommerce's own "New order" e-mail): order number, total, currency, status, items, the customer's name, the payment method and a link to the order in your admin. Classic and block checkout, HPOS order tables included.
 * **Contact Form 7**
 * **WPForms**
 * **Elementor Pro forms**
@@ -63,7 +63,7 @@ No. pingwa messages only people who joined it from their own WhatsApp: you, and 
 
 = I changed an order's status. Why no new message? =
 
-The plugin sends one message per order, when it is placed. Status changes and edits send nothing.
+The plugin sends one message per order, at the same moment WooCommerce sends you its own "New order" e-mail: when the order first reaches processing, on-hold or completed. A pending (unpaid) or failed order sends nothing until it is paid; later status changes and edits send nothing.
 
 = Is the hook URL a secret? =
 

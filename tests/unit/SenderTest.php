@@ -155,4 +155,78 @@ final class SenderTest extends TestCase { // phpcs:ignore Generic.Files.OneObjec
 		$this->assertSame( array( '1' ), $this->numbers( $this->flush() ) );
 		$this->assertSame( '', $GLOBALS['pingwa_wp']['orders'][2]->get_meta( Pingwa_Sender::ORDER_META ), 'subscription not marked' );
 	}
+	public function test_an_order_counts_when_it_is_created_paid() {
+		foreach ( array( 1 => 'processing', 2 => 'on-hold', 3 => 'completed' ) as $id => $status ) {
+			$this->order( new WC_Order( $id, $status ) );
+			Pingwa_Triggers::on_order( $id );
+		}
+		$this->assertSame( array( '1', '2', '3' ), $this->numbers( $this->flush() ) );
+	}
+
+	public function test_never_for_pending_failed_cancelled_draft_or_trash() {
+		$id = 10;
+		foreach ( array( 'pending', 'failed', 'cancelled', 'checkout-draft', 'auto-draft', 'draft', 'trash', 'refunded' ) as $status ) {
+			$order = $this->order( new WC_Order( ++$id, $status ) );
+			Pingwa_Triggers::on_order( $id );
+			$this->assertSame( array(), $this->flush(), $status );
+			$this->assertSame( '', $order->get_meta( Pingwa_Sender::ORDER_META ), "$status not marked" );
+		}
+	}
+
+	public function test_declined_then_paid_retry_gives_one_message_with_the_paid_status() {
+		$order = $this->order( new WC_Order( 7, 'pending' ) );
+		Pingwa_Triggers::on_order( 7 ); // Checkout: created pending.
+		$this->assertSame( array(), $this->flush() );
+
+		$order->status = 'failed'; // Card declined.
+		Pingwa_Triggers::on_status_changed( 7, 'pending', 'failed' );
+		$this->assertSame( array(), $this->flush() );
+		$this->assertSame( '', $order->get_meta( Pingwa_Sender::ORDER_META ) );
+
+		$order->status = 'processing'; // Retry paid.
+		Pingwa_Triggers::on_status_changed( 7, 'failed', 'processing' );
+		$bodies = $this->flush();
+		$this->assertSame( array( '7' ), $this->numbers( $bodies ) );
+		$this->assertSame( 'processing', $bodies[0]['status'] );
+		$this->assertNotSame( '', $order->get_meta( Pingwa_Sender::ORDER_META ) );
+
+		$order->status = 'completed';
+		Pingwa_Triggers::on_status_changed( 7, 'processing', 'completed' );
+		Pingwa_Triggers::on_order( 7 );
+		$this->assertSame( array(), $this->flush(), 'one message per order' );
+	}
+
+	public function test_moves_into_a_paid_status_from_pending_failed_or_draft_count() {
+		$id = 20;
+		foreach ( array( 'pending', 'failed', 'checkout-draft', 'auto-draft', 'draft' ) as $from ) {
+			$this->order( new WC_Order( ++$id, 'on-hold' ) );
+			Pingwa_Triggers::on_status_changed( $id, $from, 'on-hold' );
+			$this->assertSame( array( (string) $id ), $this->numbers( $this->flush() ), $from );
+		}
+	}
+
+	public function test_other_moves_never_count() {
+		$cases = array(
+			array( 'cancelled', 'processing' ),
+			array( 'refunded', 'processing' ),
+			array( 'on-hold', 'processing' ),
+			array( 'processing', 'completed' ),
+			array( 'trash', 'processing' ),
+			array( 'pending', 'cancelled' ),
+			array( 'pending', 'failed' ),
+		);
+		$id = 30;
+		foreach ( $cases as $case ) {
+			$this->order( new WC_Order( ++$id, $case[1] ) );
+			Pingwa_Triggers::on_status_changed( $id, $case[0], $case[1] );
+			$this->assertSame( array(), $this->flush(), implode( ' → ', $case ) );
+		}
+	}
+
+	public function test_an_abandoned_pending_order_gives_none() {
+		$order = $this->order( new WC_Order( 40, 'pending' ) );
+		Pingwa_Triggers::on_order( 40 );
+		$this->assertSame( array(), $this->flush() );
+		$this->assertSame( '', $order->get_meta( Pingwa_Sender::ORDER_META ) );
+	}
 }

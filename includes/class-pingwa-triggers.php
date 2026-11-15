@@ -25,10 +25,16 @@ final class Pingwa_Triggers {
 	const OPTION = 'pingwa_triggers';
 
 	/**
-	 * Order statuses that are not a placed order yet (block checkout drafts, admin
-	 * auto-drafts).
+	 * Statuses in which an order is announced: the ones WooCommerce's own admin "New
+	 * order" e-mail is sent for.
 	 */
-	const DRAFT_STATUSES = array( 'checkout-draft', 'auto-draft', 'draft', 'trash' );
+	const ANNOUNCED_STATUSES = array( 'processing', 'on-hold', 'completed' );
+
+	/**
+	 * Statuses an order leaves when it becomes a new order (unpaid, declined, or a block
+	 * checkout or wp-admin draft).
+	 */
+	const UNPAID_STATUSES = array( 'pending', 'failed', 'checkout-draft', 'auto-draft', 'draft' );
 
 	/**
 	 * Trigger keys and their names.
@@ -104,12 +110,14 @@ final class Pingwa_Triggers {
 		add_action( 'wpforms_process_complete', array( __CLASS__, 'on_wpforms' ), 10, 3 );
 		add_action( 'elementor_pro/forms/new_record', array( __CLASS__, 'on_elementor' ), 10, 1 );
 		add_action( 'gform_after_submission', array( __CLASS__, 'on_gravity' ), 10, 2 );
-		// Classic checkout, block (Store API) checkout, and orders made any other way
-		// (REST API, code). One delivery per order: Pingwa_Sender keeps a mark on the order.
+		// An order counts when it first reaches processing, on-hold or completed, like
+		// WooCommerce's admin "New order" e-mail: created in one of them (classic or block
+		// checkout, REST API, code), or moved into one from pending, failed or a draft
+		// (a paid retry, a gateway's later confirmation, an order made in wp-admin).
+		// Pingwa_Sender checks the status and keeps a mark on the order: one message each.
 		add_action( 'woocommerce_checkout_order_processed', array( __CLASS__, 'on_order' ), 10, 1 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( __CLASS__, 'on_order' ), 10, 1 );
 		add_action( 'woocommerce_new_order', array( __CLASS__, 'on_order' ), 10, 1 );
-		// An order made in wp-admin starts as an auto-draft: it counts once it leaves it.
 		add_action( 'woocommerce_order_status_changed', array( __CLASS__, 'on_status_changed' ), 10, 3 );
 	}
 
@@ -225,27 +233,39 @@ final class Pingwa_Triggers {
 	}
 
 	/**
-	 * WooCommerce: woocommerce_order_status_changed. Only a move out of a draft status is
-	 * a new order (an order made in wp-admin); any other change sends nothing.
+	 * WooCommerce: woocommerce_order_status_changed. Only the first move into a paid
+	 * status queues the order; any other change sends nothing.
 	 *
 	 * @param int    $order_id Order id.
 	 * @param string $from     Old status.
 	 * @param string $to       New status.
 	 */
 	public static function on_status_changed( $order_id, $from, $to ) {
-		if ( ! self::is_notifiable_status( $from ) && self::is_notifiable_status( $to ) ) {
+		if ( self::is_first_paid_transition( $from, $to ) ) {
 			self::on_order( $order_id );
 		}
 	}
 
 	/**
-	 * Whether an order in this status is a placed order.
+	 * Whether a status change makes an order a new order: from pending, failed or a draft
+	 * into processing, on-hold or completed.
+	 *
+	 * @param string $from Old status, without the wc- prefix.
+	 * @param string $to   New status, without the wc- prefix.
+	 * @return bool
+	 */
+	public static function is_first_paid_transition( $from, $to ) {
+		return in_array( (string) $from, self::UNPAID_STATUSES, true ) && self::is_announced_status( $to );
+	}
+
+	/**
+	 * Whether an order in this status is announced.
 	 *
 	 * @param string $status Status without the wc- prefix.
 	 * @return bool
 	 */
-	public static function is_notifiable_status( $status ) {
-		return ! in_array( (string) $status, self::DRAFT_STATUSES, true );
+	public static function is_announced_status( $status ) {
+		return in_array( (string) $status, self::ANNOUNCED_STATUSES, true );
 	}
 
 	/**

@@ -72,4 +72,6 @@ Needs Docker with compose v2, `python3`, `openssl`, `uv` and the pingwa server r
   3 s timeout is the cap. Under PHP-FPM or LiteSpeed the response is handed to the
   visitor first (`fastcgi_finish_request` / `litespeed_finish_request`); under mod_php a
   slow server adds up to 3 s to that one request.
-- Orders created as admin drafts in wp-admin (status `auto-draft`) are not sent.
+- An order is sent once (`shop_order` only: no subscriptions or refunds) when it first
+  reaches processing, on-hold or completed: created in one of them, or moved into one
+  from pending, failed or a draft. The rule of WooCommerce's admin "New order" e-mail.

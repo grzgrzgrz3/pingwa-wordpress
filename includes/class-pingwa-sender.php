@@ -141,8 +141,10 @@ final class Pingwa_Sender {
 	}
 
 	/**
-	 * The body of a new order, once: marks the order so later requests (status changes,
-	 * edits, a second checkout hook) send nothing. Null when there is nothing to send.
+	 * The body of a new order, once: a shop_order in processing, on-hold or completed that
+	 * was never sent. Marks the order when its body is queued, so later requests (status
+	 * changes, edits, a second checkout hook) send nothing. Null when there is nothing to
+	 * send (a pending or failed order stays unmarked and counts once it is paid).
 	 *
 	 * @param int $order_id Order id.
 	 * @return array|null
@@ -156,7 +158,7 @@ final class Pingwa_Sender {
 		if ( ! is_object( $order ) || ! method_exists( $order, 'get_type' ) || 'shop_order' !== $order->get_type() ) {
 			return null;
 		}
-		if ( ! Pingwa_Triggers::is_notifiable_status( $order->get_status() ) || $order->get_meta( self::ORDER_META ) ) {
+		if ( ! Pingwa_Triggers::is_announced_status( $order->get_status() ) || $order->get_meta( self::ORDER_META ) ) {
 			return null;
 		}
 		$order->update_meta_data( self::ORDER_META, gmdate( 'c' ) );

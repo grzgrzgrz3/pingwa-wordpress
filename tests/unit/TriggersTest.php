@@ -112,14 +112,26 @@ final class TriggersTest extends TestCase {
 		$this->assertSame( array(), $order->called, 'no other getter (e-mail, phone, address) is called' );
 	}
 
-	public function test_draft_orders_are_not_new_orders() {
-		$this->assertFalse( Pingwa_Triggers::is_notifiable_status( 'checkout-draft' ) );
-		$this->assertFalse( Pingwa_Triggers::is_notifiable_status( 'auto-draft' ) );
-		$this->assertFalse( Pingwa_Triggers::is_notifiable_status( 'draft' ) );
-		$this->assertFalse( Pingwa_Triggers::is_notifiable_status( 'trash' ) );
-		$this->assertTrue( Pingwa_Triggers::is_notifiable_status( 'pending' ) );
-		$this->assertTrue( Pingwa_Triggers::is_notifiable_status( 'processing' ) );
-		$this->assertTrue( Pingwa_Triggers::is_notifiable_status( 'on-hold' ) );
+	public function test_announced_statuses_are_the_paid_ones() {
+		foreach ( array( 'processing', 'on-hold', 'completed' ) as $status ) {
+			$this->assertTrue( Pingwa_Triggers::is_announced_status( $status ), $status );
+		}
+		foreach ( array( 'pending', 'failed', 'cancelled', 'refunded', 'checkout-draft', 'auto-draft', 'draft', 'trash', '' ) as $status ) {
+			$this->assertFalse( Pingwa_Triggers::is_announced_status( $status ), $status );
+		}
+	}
+
+	public function test_first_paid_transition_is_from_pending_failed_or_draft() {
+		$this->assertTrue( Pingwa_Triggers::is_first_paid_transition( 'pending', 'processing' ) );
+		$this->assertTrue( Pingwa_Triggers::is_first_paid_transition( 'failed', 'completed' ) );
+		$this->assertTrue( Pingwa_Triggers::is_first_paid_transition( 'checkout-draft', 'on-hold' ) );
+		$this->assertTrue( Pingwa_Triggers::is_first_paid_transition( 'auto-draft', 'processing' ) );
+		$this->assertTrue( Pingwa_Triggers::is_first_paid_transition( 'draft', 'processing' ) );
+		$this->assertFalse( Pingwa_Triggers::is_first_paid_transition( 'cancelled', 'processing' ) );
+		$this->assertFalse( Pingwa_Triggers::is_first_paid_transition( 'on-hold', 'processing' ) );
+		$this->assertFalse( Pingwa_Triggers::is_first_paid_transition( 'trash', 'processing' ) );
+		$this->assertFalse( Pingwa_Triggers::is_first_paid_transition( 'pending', 'failed' ) );
+		$this->assertFalse( Pingwa_Triggers::is_first_paid_transition( 'auto-draft', 'pending' ) );
 	}
 
 	public function test_cf7_results_that_count() {

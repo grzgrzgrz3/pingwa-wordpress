@@ -181,11 +181,11 @@ final class Pingwa_Sender {
 		if ( count( $bodies ) <= $max ) {
 			return $bodies;
 		}
-		$more   = count( $bodies ) - $max;
+		$rest   = array_slice( $bodies, $max );
 		$bodies = array_slice( $bodies, 0, $max );
 		self::guard(
-			function () use ( $more, &$bodies ) {
-				$bodies[] = Pingwa_Payload::more_orders( $more, Pingwa_Triggers::site(), Pingwa_Triggers::orders_admin_url() );
+			function () use ( $rest, &$bodies ) {
+				$bodies[] = Pingwa_Payload::more_orders( count( $rest ), Pingwa_Triggers::site(), Pingwa_Triggers::orders_admin_url(), $rest );
 			}
 		);
 		return $bodies;

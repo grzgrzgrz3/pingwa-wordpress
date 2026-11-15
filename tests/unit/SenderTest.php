@@ -23,8 +23,11 @@ class WC_Order { // phpcs:ignore Generic.Files.OneObjectStructurePerFile
 	public $id;
 	public $status;
 	public $created;
-	public $meta  = array();
-	public $saves = 0;
+	public $meta     = array();
+	public $saves    = 0;
+	public $total    = '10.00';
+	public $currency = 'EUR';
+	public $payment  = 'Card';
 
 	public function __construct( $id, $status, $created = null ) {
 		$this->id      = $id;
@@ -59,10 +62,10 @@ class WC_Order { // phpcs:ignore Generic.Files.OneObjectStructurePerFile
 		return (string) $this->id;
 	}
 	public function get_total() {
-		return '10.00';
+		return $this->total;
 	}
 	public function get_currency() {
-		return 'EUR';
+		return $this->currency;
 	}
 	public function get_billing_first_name() {
 		return 'Ada';
@@ -71,7 +74,7 @@ class WC_Order { // phpcs:ignore Generic.Files.OneObjectStructurePerFile
 		return 'Lovelace';
 	}
 	public function get_payment_method_title() {
-		return 'Card';
+		return $this->payment;
 	}
 	public function get_edit_order_url() {
 		return 'https://shop.example/wp-admin/admin.php?page=wc-orders&action=edit&id=' . $this->id;
@@ -303,6 +306,24 @@ final class SenderTest extends TestCase { // phpcs:ignore Generic.Files.OneObjec
 		foreach ( range( 101, 200 ) as $id ) {
 			$this->assertNotSame( '', $GLOBALS['pingwa_wp']['orders'][ $id ]->get_meta( Pingwa_Sender::ORDER_META ), "order $id marked" );
 		}
+	}
+
+	public function test_the_summary_of_a_batch_carries_the_batch_totals_for_the_preset() {
+		foreach ( array( 1 => '10.50', 2 => '20.25', 3 => '30.00' ) as $id => $total ) {
+			$order        = $this->order( new WC_Order( $id, 'processing' ) );
+			$order->total = $total;
+			Pingwa_Triggers::on_order( $id );
+		}
+		$GLOBALS['pingwa_wp']['filters']['pingwa_max_order_messages'] = function () {
+			return 1;
+		};
+		$bodies  = $this->flush();
+		$summary = $bodies[1];
+		$this->assertSame( 2, $summary['more_orders'] );
+		$this->assertSame( '50.25', $summary['total'] );
+		$this->assertSame( 'EUR', $summary['currency'] );
+		$this->assertSame( 'processing', $summary['status'] );
+		$this->assertSame( 'Card', $summary['payment_method_title'] );
 	}
 
 	public function test_the_order_message_cap_is_filterable() {

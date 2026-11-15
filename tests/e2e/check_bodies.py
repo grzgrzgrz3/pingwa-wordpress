@@ -9,7 +9,8 @@ For each body the plugin posted (tests/e2e/.run/captures/*.json):
 - a hook WITHOUT a template: hooks_api.render_text + clean, the exact path a real hook
   takes, must give a non-empty message, the body's `text`;
 - orders: the `woocommerce_order` preset rendered over the body by
-  hooks_api.rendered_message must fill every line of the preset;
+  hooks_api.rendered_message must fill every line of the preset, the "…and N more" summary
+  included (no line with an empty value);
 - forms: the `form_generic` preset must fill the form name and the first fields.
 Also: the plugin's join link is exactly what join.join_link("wp", number) builds, and
 its QR is segno's QR of that link. --mint writes hook URLs made by the server's own
@@ -83,7 +84,18 @@ def main():
             out = preset_render("woocommerce_order", raw, ctype)
             check(msg.startswith(f"…and {data['more_orders']} more new order") and data["edit_url"] in msg,
                   f"{name}: the summary message names the count and links the orders")
-            check(data["number"] in out, f"{name}: woocommerce_order preset shows the summary count")
+            want = [
+                f"🛒 New WooCommerce order #{data['number']}: {data['total']} {data['currency']}",
+                f"Status: {data['status']}",
+                "Customer: Several customers",
+                f"First item: {data['more_orders']} × orders: {data['edit_url']}",
+                f"Payment: {data['payment_method_title']}",
+            ]
+            check(out.split("\n") == want, f"{name}: woocommerce_order preset fills every line of the summary")
+            check(not any(re.search(r":\s*$|: ×|×\s*$|#\s*:", l) for l in out.split("\n")),
+                  f"{name}: no empty value on any line of the summary")
+            check(re.fullmatch(r"\d+\.\d\d", data["total"]) is not None and data["total"] != "0.00",
+                  f"{name}: the summary carries the batch total {data['total']} {data['currency']}")
             print("  --- message (woocommerce_order preset) ---\n  " + out.replace("\n", "\n  "))
             check(not re.search(r"@|\+1555", rec["body"]), f"{name}: no e-mail or phone anywhere")
         elif source == "woocommerce":

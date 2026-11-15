@@ -178,27 +178,106 @@ final class Pingwa_Payload {
 
 	/**
 	 * The body standing in for the orders of one request past the cap: "…and N more new
-	 * orders" with the orders list in wp-admin. `number` carries the same words for a hook
-	 * with the woocommerce_order preset.
+	 * orders" with the orders list in wp-admin.
 	 *
-	 * @param int    $count Orders not sent one by one.
-	 * @param string $site  Site name.
-	 * @param string $url   wp-admin orders list.
+	 * A hook with the `woocommerce_order` preset has no empty lines because every field it
+	 * reads is filled: `number` the count ("…and 95 more"), `total` and `currency` the sum
+	 * of the orders ("mixed currencies" when they differ), `status` and
+	 * `payment_method_title` the common value or "various", `billing` "Several customers",
+	 * and `line_items[0]` "N × orders: <orders list>". With `$orders` empty the amounts
+	 * and the status are "various".
+	 *
+	 * @param int    $count  Orders not sent one by one.
+	 * @param string $site   Site name.
+	 * @param string $url    wp-admin orders list.
+	 * @param array  $orders The bodies of those orders (from order()); optional.
 	 * @return array
 	 */
-	public static function more_orders( $count, $site, $url ) {
+	public static function more_orders( $count, $site, $url, array $orders = array() ) {
 		$count = max( 1, (int) $count );
 		$site  = self::site( $site );
 		$url   = self::url( $url );
 		$words = sprintf( '…and %d more new %s', $count, 1 === $count ? 'order' : 'orders' );
 		$text  = $words . ' on ' . $site . ( '' === $url ? '' : "\n" . $url );
+		$sum   = self::sum_totals( $orders );
 		return array(
-			'text'        => self::cut_text( $text ),
-			'number'      => sprintf( '…and %d more', $count ),
-			'more_orders' => $count,
-			'edit_url'    => $url,
-			'site'        => $site,
-			'source'      => 'woocommerce',
+			'text'                 => self::cut_text( $text ),
+			'number'               => sprintf( '…and %d more', $count ),
+			'total'                => $sum['total'],
+			'currency'             => $sum['currency'],
+			'status'               => self::common( $orders, 'status' ),
+			'billing'              => array(
+				'first_name' => 'Several',
+				'last_name'  => 'customers',
+			),
+			'line_items'           => array(
+				array(
+					'name'     => 'orders' . ( '' === $url ? '' : ': ' . $url ),
+					'quantity' => $count,
+				),
+			),
+			'payment_method_title' => self::common( $orders, 'payment_method_title' ),
+			'more_orders'          => $count,
+			'edit_url'             => $url,
+			'site'                 => $site,
+			'source'               => 'woocommerce',
+		);
+	}
+
+	/**
+	 * The value every order body has for $key, else "various".
+	 *
+	 * @param array  $orders Order bodies.
+	 * @param string $key    Key.
+	 * @return string
+	 */
+	private static function common( array $orders, $key ) {
+		$values = array();
+		foreach ( $orders as $order ) {
+			$values[ isset( $order[ $key ] ) && is_scalar( $order[ $key ] ) ? (string) $order[ $key ] : '' ] = true;
+		}
+		$values = array_keys( $values );
+		return 1 === count( $values ) && '' !== $values[0] ? $values[0] : 'various';
+	}
+
+	/**
+	 * The sum of the order totals when they share one currency.
+	 *
+	 * @param array $orders Order bodies.
+	 * @return array total, currency.
+	 */
+	private static function sum_totals( array $orders ) {
+		$currency = self::common( $orders, 'currency' );
+		if ( ! $orders ) {
+			return array(
+				'total'    => 'various',
+				'currency' => 'amounts',
+			);
+		}
+		if ( 'various' === $currency ) {
+			return array(
+				'total'    => 'mixed',
+				'currency' => 'currencies',
+			);
+		}
+		$decimals = 0;
+		foreach ( $orders as $order ) {
+			$total = isset( $order['total'] ) ? (string) $order['total'] : '';
+			if ( 1 !== preg_match( '/^-?\d+(?:\.(\d+))?$/', $total, $m ) ) {
+				return array(
+					'total'    => 'various',
+					'currency' => $currency,
+				);
+			}
+			$decimals = max( $decimals, isset( $m[1] ) ? strlen( $m[1] ) : 0 );
+		}
+		$units = 0;
+		foreach ( $orders as $order ) {
+			$units += (int) round( (float) $order['total'] * pow( 10, $decimals ) );
+		}
+		return array(
+			'total'    => number_format( $units / pow( 10, $decimals ), $decimals, '.', '' ),
+			'currency' => $currency,
 		);
 	}
 

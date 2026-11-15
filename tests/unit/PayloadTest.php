@@ -333,6 +333,72 @@ final class PayloadTest extends TestCase {
 	}
 
 	/**
+	 * The server's woocommerce_order preset (hook_templates.py) rendered over a body: the
+	 * same placeholders, none with a default.
+	 *
+	 * @param array $body Body.
+	 * @return string
+	 */
+	private function render_preset( array $body ) {
+		$template = "🛒 New WooCommerce order #{{ number }}: {{ total }} {{ currency }}\n"
+			. "Status: {{ status }}\n"
+			. "Customer: {{ billing.first_name }} {{ billing.last_name }}\n"
+			. "First item: {{ line_items[0].quantity }} × {{ line_items[0].name }}\n"
+			. 'Payment: {{ payment_method_title }}';
+		return preg_replace_callback(
+			'/\{\{\s*(.*?)\s*\}\}/',
+			function ( $m ) use ( $body ) {
+				$cur = $body;
+				foreach ( preg_split( '/\.|\[(\d+)\]/', $m[1], -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE ) as $step ) {
+					if ( ! is_array( $cur ) || ! isset( $cur[ $step ] ) ) {
+						return '';
+					}
+					$cur = $cur[ $step ];
+				}
+				return is_scalar( $cur ) ? (string) $cur : '';
+			},
+			$template
+		);
+	}
+
+	public function test_the_summary_renders_a_full_woocommerce_order_preset() {
+		$orders  = array(
+			Pingwa_Payload::order( array( 'number' => '1', 'total' => '10.50', 'currency' => 'EUR', 'status' => 'processing', 'payment_method_title' => 'Card', 'items' => array( array( 'name' => 'A', 'quantity' => 2, 'total' => '5' ) ) ), 'S' ),
+			Pingwa_Payload::order( array( 'number' => '2', 'total' => '20.25', 'currency' => 'EUR', 'status' => 'completed', 'payment_method_title' => 'Cash on delivery', 'items' => array( array( 'name' => 'B', 'quantity' => 1, 'total' => '20' ) ) ), 'S' ),
+		);
+		$summary = Pingwa_Payload::more_orders( 95, 'Shop', 'https://shop.example/wp-admin/admin.php?page=wc-orders', $orders );
+		$lines   = explode( "\n", $this->render_preset( $summary ) );
+		$this->assertCount( 5, $lines );
+		foreach ( $lines as $line ) {
+			$this->assertDoesNotMatchRegularExpression( '/:\s*$|: ×|×\s*$|#\s*:/', $line, $line );
+		}
+		$this->assertSame( '🛒 New WooCommerce order #…and 95 more: 30.75 EUR', $lines[0] );
+		$this->assertSame( 'Status: various', $lines[1] );
+		$this->assertSame( 'Customer: Several customers', $lines[2] );
+		$this->assertSame( 'First item: 95 × orders: https://shop.example/wp-admin/admin.php?page=wc-orders', $lines[3] );
+		$this->assertSame( 'Payment: various', $lines[4] );
+	}
+
+	public function test_the_summary_without_the_orders_still_fills_every_preset_line() {
+		$summary = Pingwa_Payload::more_orders( 3, 'Shop', '' );
+		foreach ( explode( "\n", $this->render_preset( $summary ) ) as $line ) {
+			$this->assertDoesNotMatchRegularExpression( '/:\s*$|: ×|×\s*$|#\s*:/', $line, $line );
+		}
+		$this->assertSame( '…and 3 more new orders on Shop', $summary['text'] );
+	}
+
+	public function test_the_summary_of_mixed_currencies_adds_no_amounts() {
+		$orders  = array(
+			Pingwa_Payload::order( array( 'number' => '1', 'total' => '10', 'currency' => 'EUR', 'status' => 'processing', 'payment_method_title' => 'Card' ), 'S' ),
+			Pingwa_Payload::order( array( 'number' => '2', 'total' => '10', 'currency' => 'USD', 'status' => 'processing', 'payment_method_title' => 'Card' ), 'S' ),
+		);
+		$summary = Pingwa_Payload::more_orders( 2, 'Shop', '', $orders );
+		$this->assertSame( 'mixed', $summary['total'] );
+		$this->assertSame( 'currencies', $summary['currency'] );
+		$this->assertSame( 'processing', $summary['status'] );
+	}
+
+	/**
 	 * A card number as each plugin hands it over, never in the body.
 	 */
 	private function assert_card_never_sent( array $fields, $source ) {

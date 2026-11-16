@@ -61,7 +61,7 @@ svg{display:block}
 .phone .bar small{font-size:12px;opacity:.8}
 .phone .bar .notch{position:absolute;top:8px;left:50%;margin-left:-45px;width:90px;height:20px;border-radius:12px;background:var(--ink)}
 .chat{padding:16px 12px 120px;display:flex;flex-direction:column;gap:6px;font-family:var(--sans)}
-.phone .bb{font-size:16.5px}
+.phone .bb{font-size:16.5px;max-width:94%}
 .chip{align-self:center;background:var(--card);color:var(--ink-soft);font-size:12px;padding:4px 11px;border-radius:9px;margin-bottom:6px}
 .bb{max-width:88%;padding:8px 11px 6px;border-radius:12px;font-size:15px;line-height:1.32;white-space:pre-wrap;overflow-wrap:anywhere}
 .bb.in{background:var(--surface);align-self:flex-start;border-top-left-radius:3px}
@@ -149,9 +149,10 @@ def shot_html(eyebrow, headline, sub, bubbles, phone_h=520, field=None, left_ext
 
 
 # ---- the Shopify ones (1600x900) -----------------------------------------------------------
-def caption_shot(eyebrow, headline, sub, right):
+def caption_shot(eyebrow, headline, sub, right, water=True):
+    band = '<div style="position:absolute;left:0;right:0;bottom:0;height:150px;background:var(--water-1)"></div>' if water else ""
     return page(f'''
-<div style="position:absolute;left:0;right:0;bottom:0;height:150px;background:var(--water-1)"></div>
+{band}
 <div style="position:absolute;left:96px;top:236px;width:600px">
   <div class="eyebrow" style="font-size:15px">{eyebrow}</div>
   <div class="h" style="font-size:66px;margin-top:16px">{headline}</div>
@@ -225,10 +226,13 @@ STATUS_LINKED = {"shop": "lakeside-goods.myshopify.com", "linked": True, "needs_
 
 
 def join_qr(url):
-    svg = subprocess.run(["uvx", "--from", "segno==1.6.6", "segno", "--error", "M", "--scale", "6", "--border", "2",
-                          "--dark", "#000", "--light", "#fff", "--no-xmldecl", "--output=-", "--kind=svg", url],
-                         check=True, capture_output=True, text=True).stdout
-    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        f = Path(d) / "qr.svg"
+        subprocess.run(["uvx", "--from", "segno==1.6.6", "segno", "--error", "M", "--scale", "6", "--border", "2",
+                        "--dark", "#000", "--light", "#fff", "--no-xmldecl", "--output", str(f), url],
+                       check=True, capture_output=True, text=True)
+        return "data:image/svg+xml;base64," + base64.b64encode(f.read_bytes()).decode()
 
 
 def embedded_page(browser, status, tmp):
@@ -255,9 +259,11 @@ def embedded_page(browser, status, tmp):
     pg.add_style_tag(content="html,body{overflow:visible}")
     # the footnote carries the pricing sentence: no pricing in listing images
     pg.evaluate("document.querySelector('.note').remove()")
-    box = pg.evaluate("(()=>{const a=document.querySelector('.app').getBoundingClientRect();return {w:a.width,h:a.height}})()")
+    box = pg.evaluate("""(()=>{const a=document.querySelector('.app').getBoundingClientRect();
+      let b=0;document.querySelectorAll('.card').forEach(c=>{if(!c.hidden){b=Math.max(b,c.getBoundingClientRect().bottom)}});
+      return {x:a.left,w:a.width,h:b+22}})()""")
     out = tmp / f"page-{'linked' if status['linked'] else 'unlinked'}.png"
-    pg.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": box["w"], "height": box["h"] - 20})
+    pg.screenshot(path=str(out), clip={"x": box["x"], "y": 0, "width": box["w"], "height": box["h"]})
     ctx.close()
     return out, box
 
@@ -276,38 +282,38 @@ def make_shopify(browser, out_dir):
     # 1: the app page, not linked yet
     unl, ub = embedded_page(browser, STATUS_UNLINKED, tmp)
     h = 900 - 2 * 56
-    w = int(ub["w"] * h / (ub["h"] - 20))
+    w = int(ub["w"] * h / ub["h"])
     shoot(pg, caption_shot("Link · one time", "Pick the number that gets the alerts.",
                            "Choose when pingwa sends, link a pingwa number and you are done.",
-                           framed(b64(unl), 1600 - 96 - w, 56, w)), out / "screenshot-1-link.png", 1600, 900)
+                           framed(b64(unl), 1600 - 96 - w, 56, w), water=False), out / "screenshot-1-link.png", 1600, 900)
     # 2: linked: trigger and recipients
     lnk, lb = embedded_page(browser, STATUS_LINKED, tmp)
     h = 900 - 2 * 56
-    w = int(lb["w"] * h / (lb["h"] - 20))
+    w = int(lb["w"] * h / lb["h"])
     shoot(pg, caption_shot("Settings", "You, or your whole team.",
                            "Alert on a placed order or a paid one, and choose who gets the message.",
-                           framed(b64(lnk), 1600 - 96 - w, 56, w)), out / "screenshot-2-settings.png", 1600, 900)
+                           framed(b64(lnk), 1600 - 96 - w, 56, w), water=False), out / "screenshot-2-settings.png", 1600, 900)
     # 3: the alert on a phone
     shoot(pg, caption_shot("The alert", "Order number, total, first item.",
                            "One message per order. No customer name, e-mail, phone or address.",
-                           phone([bubble(SHOPIFY_ORDER, "in", "9:41")], "right:150px;top:70px;height:900px")),
+                           phone([bubble(SHOPIFY_ORDER, "in", "9:41")], "right:150px;top:150px;height:520px")),
           out / "screenshot-3-alert.png", 1600, 900)
     # 4: the link step for people without an account: the join code
     unl_crop = tmp / "join-card.png"
     shoot_join_card(browser, unl_crop)
-    shoot(pg, caption_shot("No pingwa account yet", "Text join shopify.",
-                           "Scan the code or open the link. One message gets you an account, then link it in the app.",
+    shoot(pg, caption_shot("No pingwa account yet", "One message gets you in.",
+                           "Scan the code or open the link, then link the new account in the app.",
                            framed(b64(unl_crop), 1600 - 96 - 640, 150, 640)
-                           + phone([bubble("join shopify", "out", "9:38")], "right:200px;top:520px;height:700px;width:330px")),
+                           + phone([bubble("join shopify", "out", "9:38")], "right:230px;top:470px;height:340px;width:340px")),
           out / "screenshot-4-join.png", 1600, 900)
     # feature image
     shoot(pg, page(f'''
 {tip("left:560px;bottom:150px;width:760px;height:560px")}
-<div style="position:absolute;left:785px;bottom:420px;width:300px">{MARK}</div>
+<div style="position:absolute;left:785px;bottom:400px;width:300px">{MARK}</div>
 <div class="water" style="height:150px"></div>
 <svg class="wave" style="bottom:148px;height:40px" viewBox="0 0 1200 26" preserveAspectRatio="none"><path d="M0 14c50-12 100-12 150 0s100 12 150 0 100-12 150 0 100 12 150 0 100-12 150 0 100 12 150 0 100-12 150 0 100 12 150 0v12H0z"/></svg>
-<div class="eyebrow" style="position:absolute;left:0;right:0;top:78px;text-align:center;font-size:18px">pingwa order alerts</div>
-<div class="h" style="position:absolute;left:0;right:0;top:112px;text-align:center;font-size:84px">Your shop texts <em>you.</em></div>
+<div class="eyebrow" style="position:absolute;left:0;right:0;top:44px;text-align:center;font-size:18px">pingwa order alerts</div>
+<div class="h" style="position:absolute;left:0;right:0;top:76px;text-align:center;font-size:84px">Your shop texts <em>you.</em></div>
 <div style="position:absolute;left:112px;top:420px;display:flex;flex-direction:column;gap:12px;font-family:var(--sans);width:420px">
   <div class="bb in" style="font-size:22px;padding:14px 18px 10px;border-radius:20px;border-top-left-radius:5px">🛒 New order #1042: 48.50 EUR<time style="font-size:14px">9:41</time></div>
   <div class="bb in" style="font-size:22px;padding:14px 18px 10px;border-radius:20px;border-top-left-radius:5px;margin-left:36px">🛒 New order #1043: 19.00 EUR<time style="font-size:14px">9:52</time></div>

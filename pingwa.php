@@ -1,13 +1,13 @@
 <?php
 /**
  * Plugin Name:       pingwa – order and form alerts
- * Plugin URI:        https://pingwa.grzgrzgrz3.ovh/woocommerce
+ * Plugin URI:        https://pingwa.dev/woocommerce
  * Description:       Sends Contact Form 7, WPForms, Elementor Pro and Gravity Forms submissions and new WooCommerce orders to your WhatsApp through a pingwa hook URL.
  * Version:           0.1.0
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            pingwa
- * Author URI:        https://pingwa.grzgrzgrz3.ovh/
+ * Author URI:        https://pingwa.dev/
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       pingwa
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'PINGWA_VERSION', '0.1.0' );
 define( 'PINGWA_FILE', __FILE__ );
 // The pingwa server the setup steps and links point to.
-define( 'PINGWA_SERVER_URL', 'https://pingwa.grzgrzgrz3.ovh' );
+define( 'PINGWA_SERVER_URL', 'https://pingwa.dev' );
 
 require_once __DIR__ . '/includes/class-pingwa-hook-url.php';
 require_once __DIR__ . '/includes/class-pingwa-payload.php';
